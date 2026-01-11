@@ -6,16 +6,7 @@ from datetime import datetime, timedelta, timezone
 import time
 from src.utils.logger.logger import Log
 
-TAG = "TelegramScraper"
-
-# --- Optional AI Module ---
-try:
-    from marking_util import NewsClassifier
-
-    HAS_CLASSIFIER = True
-except ImportError:
-    HAS_CLASSIFIER = False
-
+TAG = "TELEGRAM_CHANNEL_MODULE_SCRAPER"
 
 class TelegramScraper:
     def __init__(self, config):
@@ -25,13 +16,6 @@ class TelegramScraper:
         self.target_tz_offset = 9  # JST
         self.lookback_days = int(config.get("lookback_days", 3))
         self.max_pages = int(config.get("max_pages", 5))
-
-        self.classifier = None
-        if HAS_CLASSIFIER and config.get("enable_ai", False):
-            try:
-                self.classifier = NewsClassifier(config_path="configs/config.yml")
-            except Exception as e:
-                Log.w(TAG, f"AI Classifier init failed: {e}")
 
     def _get_message_date(self, msg_node):
         time_tag = msg_node.find('time', class_='time')
@@ -103,19 +87,7 @@ class TelegramScraper:
         is_pure_link = bool(
             re.match(r'^https?://\S+$', plain_text_content) or re.match(r'^https?://\S+$', clean_check_str))
 
-        # 6. AI Tagging
-        category_tag = ""
-        if self.classifier:
-            target_text = f"{p_title} {p_desc}" if is_pure_link else plain_text_content
-            if target_text and len(target_text) > 5:
-                try:
-                    res = self.classifier.predict(target_text)
-                    if res['confidence'] > 0.12:
-                        category_tag = f"[{res['label']}]"
-                except Exception:
-                    pass
-
-        # 7. Title Generation
+        # 6. Title Generation
         title_text = ""
         final_content = ""
         if is_pure_link:
@@ -132,8 +104,9 @@ class TelegramScraper:
 
         clean_title = title_text.replace('\n', ' ').strip()[:57]
 
-        # 8. Assemble Markdown
-        md_lines = [f"### {clean_title}", f"*{category_tag} {formatted_time} (JST)*"]
+        # 7. Assemble Markdown
+        # Note: Tags are now handled by the system API, so we don't add them here.
+        md_lines = [f"### {clean_title}", f"*{formatted_time} (JST)*"]
         if reply_md: md_lines.append(reply_md)
         if final_content: md_lines.append(final_content)
         if p_image_url: md_lines.append(f"![image]({p_image_url})")
@@ -144,9 +117,9 @@ class TelegramScraper:
         return {
             "source": channel_name,
             "title": clean_title,
-            "date": dt_utc,
+            "date": dt_utc.isoformat(),
             "markdown": full_md,
-            "raw_data": {"link": post_link, "summary": final_content[:50]}
+            "raw_data": {"link": post_link, "summary": final_content[:50], "text": plain_text_content}
         }
 
     def run(self, channel_urls, on_item_found):

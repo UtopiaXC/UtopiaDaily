@@ -1,0 +1,25 @@
+{
+  "telegram_channel": {
+    "config": {
+      "channels": {
+        "value": "https://t.me/s/tnews365,https://t.me/s/scitech_fans",
+        "description": "Telegram channel list (comma separated)",
+        "hint": "Public channels only",
+        "regular": ".*"
+      },
+      "lookback_days": {
+        "value": "3",
+        "description": "Lookback days",
+        "hint": "Integer",
+        "regular": "^\\d+$"
+      }
+    },
+    "tasks": {
+      "fetch_news": {
+        "cron": "8 20 * * *",
+        "description": "Fetch Telegram daily news"
+      }
+    },
+    "enabled": true
+  }
+}

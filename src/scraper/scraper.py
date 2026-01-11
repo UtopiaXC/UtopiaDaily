@@ -3,21 +3,48 @@ import os
 from src.scraper.modules.module_manager import ModuleManager
 from src.utils.logger.logger import Log
 
-TAG="SCRAPER SERVICE"
+TAG="SCRAPER_SERVICE"
 
 
 def run_scraper_service():
     pid = os.getpid()
     Log.i(TAG,f"Process started (PID: {pid})")
+    
     manager = ModuleManager()
-    manager.scan_and_load()
+    
+    # 1. Scan for available modules
+    available_modules = manager.scan_modules()
+    Log.i(TAG, f"Scanned {len(available_modules)} modules:")
+    for mod_id, info in available_modules.items():
+        meta = info.get('meta', {})
+        Log.i(TAG, f" - [{mod_id}] {meta.get('name', mod_id)}")
+
+    # 2. Auto-start enabled modules
+    # TODO: In production, this loop just checks DB status.
+    # For this demo, if 'telegram_channel' is not enabled yet, we simulate a user enabling it.
+    
+    if "telegram_channel" in available_modules:
+        if not manager.is_module_enabled("telegram_channel"):
+            Log.i(TAG, "DEMO: Simulating user enabling 'telegram_channel'...")
+            manager.enable_module("telegram_channel")
+        else:
+            Log.i(TAG, "'telegram_channel' is already enabled. Starting...")
+            manager.start_module("telegram_channel")
+
+    # Start other enabled modules
+    for mod_id in available_modules:
+        if mod_id != "telegram_channel" and manager.is_module_enabled(mod_id):
+            manager.start_module(mod_id)
+    
     Log.i(TAG,"Inited, starting loop...")
     try:
         while True:
-            Log.i(TAG,"Simulate task triggered")
-            manager.run_module_task("telegram_channel", {"target": "news"})
-
-            time.sleep(50)
+            time.sleep(10)
 
     except KeyboardInterrupt:
         Log.w(TAG,"Interrupted, stopping service...")
+        # Cleanup
+        for mod_id in list(manager.runners.keys()):
+            # Just stop threads, don't disable in DB
+            runner = manager.runners[mod_id]
+            runner.stop()
