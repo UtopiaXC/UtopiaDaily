@@ -1,0 +1,6 @@
+{
+    "module.telegram.desc": "抓取公开 Telegram 频道的新闻和更新。",
+    "module.telegram.config.channels.desc": "Telegram 频道列表（逗号分隔）",
+    "module.telegram.config.lookback.desc": "回溯天数",
+    "module.telegram.task.fetch_news.desc": "获取 Telegram 每日新闻"
+}

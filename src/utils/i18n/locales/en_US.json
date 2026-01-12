@@ -1,0 +1,4 @@
+{
+    "config.system_version.desc": "Current system version",
+    "config.log_level.desc": "System logging level"
+}

@@ -3,6 +3,7 @@ from src.scraper.modules.base_module import BaseModule
 from src.scraper.modules.default.telegram_channel.telegram_channel_scraper import TelegramScraper
 
 from datetime import datetime
+from typing import Tuple
 
 TAG = "TELEGRAM_CHANNEL_MODULE_API"
 
@@ -49,6 +50,29 @@ class TelegramChannelModule(BaseModule):
     def disable_module(self) -> bool:
         Log.i(TAG, "Module disabled")
         return True
+
+    def test_module(self) -> Tuple[bool, str]:
+        """
+        Test if the module can successfully connect to at least one channel.
+        """
+        channels_str = self.get_module_config("channels")
+        if not channels_str:
+            # If config is missing, try a default one just for testing connectivity
+            test_channels = ["https://t.me/s/telegram"]
+        else:
+            test_channels = [url.strip() for url in channels_str.split(',') if url.strip()]
+            if not test_channels:
+                return False, "No channels configured"
+
+        # Use just the first channel for a quick connectivity test
+        target_channel = test_channels[0]
+        
+        try:
+            # Use the scraper's own test method
+            scraper = TelegramScraper({})
+            return scraper.test_connection(target_channel)
+        except Exception as e:
+            return False, f"Connection test failed: {str(e)}"
 
     def execute_schedule_task(self, cron: str, task_key: str, timestamp: datetime) -> bool:
         if task_key == "fetch_news":

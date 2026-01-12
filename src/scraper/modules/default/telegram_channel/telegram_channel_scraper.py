@@ -176,3 +176,22 @@ class TelegramScraper:
             break
 
         return items_count
+
+    def test_connection(self, channel_url):
+        """
+        Test connection to a single channel.
+        Returns: (success: bool, message: str)
+        """
+        try:
+            target_url = channel_url.replace("t.me/", "t.me/s/") if "/s/" not in channel_url else channel_url
+            res = requests.get(target_url, headers=self.headers, timeout=10)
+            if res.status_code == 200:
+                # Basic validation that we got a Telegram page
+                if "tgme_widget_message" in res.text or "tgme_channel_info" in res.text:
+                    return True, f"Successfully connected to {channel_url}"
+                else:
+                    return False, f"Connected to {channel_url} but content doesn't look like a Telegram channel"
+            else:
+                return False, f"Failed to connect to {channel_url}, status: {res.status_code}"
+        except Exception as e:
+            return False, f"Connection test failed: {str(e)}"

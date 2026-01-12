@@ -6,26 +6,46 @@ from src.utils.logger.logger import Log
 
 TAG = "DB_CONNECTION"
 
-DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "database/data.db")
-SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{DB_PATH}")
+# Define paths for two databases
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+SYSTEM_DB_DIR = os.path.join(PROJECT_ROOT, "database", "system")
+DATA_DB_DIR = os.path.join(PROJECT_ROOT, "database", "data")
+
+SYSTEM_DB_PATH = os.path.join(SYSTEM_DB_DIR, "system.db")
+DATA_DB_PATH = os.path.join(DATA_DB_DIR, "data.db")
+
+SYSTEM_DB_URL = f"sqlite:///{SYSTEM_DB_PATH}"
+DATA_DB_URL = f"sqlite:///{DATA_DB_PATH}"
 
 Base = declarative_base()
 
 class DatabaseManager:
-    def __init__(self):
+    def __init__(self, db_url, tag_suffix):
+        self.db_url = db_url
+        self.tag = f"{TAG}_{tag_suffix}"
         self._engine = None
         self._session_factory = None
 
-    def init_db(self, db_url=SQLALCHEMY_DATABASE_URL):
+    def _ensure_directory(self):
+        if "sqlite" in self.db_url:
+            path = self.db_url.replace("sqlite:///", "")
+            directory = os.path.dirname(path)
+            if not os.path.exists(directory):
+                os.makedirs(directory)
+                Log.i(self.tag, f"Created database directory: {directory}")
+
+    def init_db(self):
         if self._engine:
             return
 
+        self._ensure_directory()
+
         connect_args = {}
-        if "sqlite" in db_url:
+        if "sqlite" in self.db_url:
             connect_args = {"check_same_thread": False}
 
         self._engine = create_engine(
-            db_url,
+            self.db_url,
             connect_args=connect_args,
             pool_pre_ping=True,
             echo=False
@@ -34,10 +54,14 @@ class DatabaseManager:
         self._session_factory = scoped_session(
             sessionmaker(autocommit=False, autoflush=False, bind=self._engine)
         )
+        
+        Log.i(self.tag, f"Database initialized at {self.db_url}")
 
-        # 自动建表（仅用于开发阶段，生产环境建议使用 Alembic 迁移）
-        Base.metadata.create_all(bind=self._engine)
-        Log.i(TAG, f"Database initialized at {db_url}")
+    def create_tables(self, base=Base):
+        """Explicitly create tables bound to this engine"""
+        if not self._engine:
+            self.init_db()
+        base.metadata.create_all(bind=self._engine)
 
     def get_session(self):
         if not self._session_factory:
@@ -48,16 +72,31 @@ class DatabaseManager:
         if self._session_factory:
             self._session_factory.remove()
 
-db_manager = DatabaseManager()
+# Create two separate managers
+system_db_manager = DatabaseManager(SYSTEM_DB_URL, "SYSTEM")
+data_db_manager = DatabaseManager(DATA_DB_URL, "DATA")
 
 @contextmanager
-def session_scope():
-    session = db_manager.get_session()
+def system_session_scope():
+    session = system_db_manager.get_session()
     try:
         yield session
         session.commit()
     except Exception as e:
-        Log.e(TAG, "Session rollback due to exception", error=e)
+        Log.e("DB_SESSION_SYSTEM", "Session rollback due to exception", error=e)
+        session.rollback()
+        raise
+    finally:
+        session.close()
+
+@contextmanager
+def data_session_scope():
+    session = data_db_manager.get_session()
+    try:
+        yield session
+        session.commit()
+    except Exception as e:
+        Log.e("DB_SESSION_DATA", "Session rollback due to exception", error=e)
         session.rollback()
         raise
     finally:

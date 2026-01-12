@@ -13,8 +13,11 @@
 src/scraper/modules/external/
 └── my_news_scraper/       <-- 模组ID
     ├── api.py             <-- 核心入口文件 (必须)
-    ├── scraper.py         <-- 业务逻辑 (推荐分离)
-    └── requirements.txt   <-- 依赖说明
+    ├── scraper.py         <-- 业务逻辑 (非必须，建议将业务逻辑从api中剥离)
+    ├── locales/           <-- 国际化资源目录 (可选，推荐使用)
+    │   ├── en_US.json
+    │   └── zh_CN.json
+    └── requirements.txt   <-- 依赖
 ```
 
 ## 2. 开发规范 (api.py)
@@ -28,7 +31,7 @@ src/scraper/modules/external/
 ```python
 MODULE_META = {
     "name": "我的新闻抓取器",
-    "description": "抓取某某网站的新闻",
+    "description": "module.my_news.desc", # 推荐使用 I18n Key
     "version": "1.0.0",
     "author": "开发者名称"
 }
@@ -60,7 +63,7 @@ def create_module(context):
 def set_module_config(self, key: str, description: str, value: str, force_init: bool = False, hint: str = "", regular: str = "")
 ```
 *   **key**: 配置项的唯一标识符。
-*   **description**: 在后台显示的配置描述。
+*   **description**: 在后台显示的配置描述。**推荐使用 I18n Key**。
 *   **value**: 默认值。
 *   **force_init**: 是否强制覆盖已存在的配置描述（通常为 False）。
 *   **hint**: 输入框的提示信息。
@@ -91,7 +94,7 @@ def drop_module_config(self, key: str)
 def set_module_schedule_task(self, key: str, description: str, cron: str, force_init: bool = False, hint: str = "", regular: str = "")
 ```
 *   **key**: 任务的唯一标识符。
-*   **description**: 任务描述。
+*   **description**: 任务描述。**推荐使用 I18n Key**。
 *   **cron**: Cron 表达式 (格式: `分 时 日 月 周`)。例如 `0 8 * * *` 表示每天 08:00。
 *   **force_init**: 是否强制更新任务描述。
 
@@ -139,6 +142,16 @@ def enable_module(self) -> bool
 def disable_module(self) -> bool
 ```
 
+#### `test_module`
+模组自检接口。用于验证模组可用性（如网络连接、API 密钥有效性）。必须实现，启用模组会调用此方法检查模组可用性，如果没有或检查失败则不允许启用模组。
+
+```python
+def test_module(self) -> Tuple[bool, str]
+```
+*   **返回**: 一个元组 `(success, message)`。
+    *   `success`: True 表示测试通过，False 表示失败。
+    *   `message`: 成功或失败的详细描述信息。
+
 #### `execute_schedule_task`
 定时任务触发时被调用。
 
@@ -158,16 +171,46 @@ def generate_html(self, value: Any) -> Optional[str]
 def generate_markdown(self, value: Any) -> Optional[str]
 ```
 
-## 4. 完整代码示例
+## 4. 国际化 (I18n) 支持
+
+系统支持模块化的国际化配置。
+
+### 4.1 目录结构
+在模组目录下创建 `locales` 文件夹，并放置 JSON 格式的语言文件。
+```text
+my_module/
+├── locales/
+│   ├── en_US.json
+│   └── zh_CN.json
+```
+
+### 4.2 Key 命名规范
+为了避免冲突，建议使用以下命名规范：
+`module.<module_id>.<category>.<key>`
+
+示例 (`en_US.json`):
+```json
+{
+    "module.my_news.desc": "My News Scraper",
+    "module.my_news.config.url.desc": "Target Website URL",
+    "module.my_news.task.daily.desc": "Daily Fetch Task"
+}
+```
+
+### 4.3 使用方法
+在 `MODULE_META`、`set_module_config` 和 `set_module_schedule_task` 的描述字段中，直接填写 Key 即可。系统会在显示时自动翻译。
+
+## 5. 完整代码示例
 
 ```python
 from src.utils.logger.logger import Log
 from src.scraper.modules.base_module import BaseModule
 from datetime import datetime
+from typing import Tuple
 
 MODULE_META = {
     "name": "示例模组",
-    "description": "这是一个演示模组",
+    "description": "module.example.desc", # 使用 I18n Key
     "version": "1.0.0",
     "author": "DemoUser"
 }
@@ -177,16 +220,24 @@ class MyModule(BaseModule):
     def enable_module(self) -> bool:
         self.set_module_config(
             key="target_url",
-            description="目标网站地址",
+            description="module.example.config.url.desc", # 使用 I18n Key
             value="https://example.com",
             hint="请输入完整的URL"
         )
         self.set_module_schedule_task(
             key="daily_task",
-            description="每日抓取任务",
+            description="module.example.task.daily.desc", # 使用 I18n Key
             cron="0 8 * * *"
         )
         return True
+
+    def test_module(self) -> Tuple[bool, str]:
+        # 实现自检逻辑
+        url = self.get_module_config("target_url")
+        if not url:
+            return False, "URL not configured"
+        # 模拟连接测试
+        return True, f"Successfully connected to {url}"
 
     def execute_schedule_task(self, cron: str, task_key: str, timestamp: datetime) -> bool:
         if task_key == "daily_task":

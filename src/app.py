@@ -4,6 +4,7 @@ import sys
 import os
 import signal
 from src.utils.logger.logger import Log
+from src.utils.i18n import i18n
 
 TAG="APP"
 
@@ -11,8 +12,12 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.dirname(current_dir)
 sys.path.append(project_root)
 
+from src.database.migration_manager import migration_manager
 from src.scraper.scraper import run_scraper_service
+from src.management.server import run_management_server
+
 children_processes = []
+
 def signal_handler(sig, frame):
     Log.w(TAG,f"Received signal: {sig}, stopping system...")
     cleanup_and_exit()
@@ -33,18 +38,36 @@ def cleanup_and_exit():
 
 
 def main():
+    # 1. Run Database Migrations
+    try:
+        Log.i(TAG, "Initializing database and checking migrations...")
+        migration_manager.run_migrations()
+    except Exception as e:
+        Log.e(TAG, "Critical error during database migration. Exiting.", error=e)
+        sys.exit(1)
+
+    # 2. Start Services
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
+
+    # Start Scraper Service
     scraper_process = multiprocessing.Process(
         target=run_scraper_service,
         name="ScraperService"
     )
-
     scraper_process.start()
     children_processes.append(scraper_process)
-    Log.i(TAG,f"Process up: {scraper_process.pid}")
+    Log.i(TAG,f"Scraper Process up: {scraper_process.pid}")
 
-    # TODO: Other Services
+    # Start Management API Server
+    api_process = multiprocessing.Process(
+        target=run_management_server,
+        kwargs={"host": "0.0.0.0", "port": 8000},
+        name="ManagementAPIServer"
+    )
+    api_process.start()
+    children_processes.append(api_process)
+    Log.i(TAG,f"API Process up: {api_process.pid}")
 
     try:
         while True:
@@ -61,4 +84,6 @@ def main():
 
 if __name__ == "__main__":
     Log.i(TAG,f"Utopia Daily starting...")
+    Log.i(TAG, f"I18n Test (EN): {i18n.t('config.system_version.desc')}")
+    Log.i(TAG, f"I18n Test (CN): {i18n.t('config.system_version.desc', locale='zh_CN')}")
     main()

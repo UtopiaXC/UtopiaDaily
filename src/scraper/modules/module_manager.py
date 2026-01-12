@@ -10,6 +10,7 @@ from typing import Dict, Any, Optional, List
 from croniter import croniter
 
 from src.utils.logger.logger import Log
+from src.utils.i18n import i18n
 
 TAG = "MODULE_MANAGER"
 DB_FILE = "modules_db.json"
@@ -67,6 +68,11 @@ class ModuleRunner(threading.Thread):
             module_dir = os.path.dirname(self.module_path)
             if module_dir not in sys.path:
                 sys.path.insert(0, module_dir)
+
+            # Load module locales if exist
+            locales_dir = os.path.join(module_dir, "locales")
+            if os.path.exists(locales_dir):
+                i18n.load_module_locales(locales_dir)
 
             spec = importlib.util.spec_from_file_location(f"module_{self.module_id}", self.module_path)
             if spec is None:
@@ -343,3 +349,58 @@ class ModuleManager:
     def notify_module_disabled(self, module_id, reason):
         Log.e(TAG, f"SYSTEM ALERT: Module {module_id} disabled due to: {reason}")
         self.disable_module(module_id)
+
+    def test_module(self, module_id):
+        """
+        Test the availability of a module.
+        Returns: (success: bool, message: str)
+        """
+        Log.i(TAG, f"Testing module: {module_id}")
+        
+        # Try to use running instance first
+        if module_id in self.runners and self.runners[module_id].is_alive():
+            runner = self.runners[module_id]
+            if runner.module_instance:
+                try:
+                    if hasattr(runner.module_instance, 'test_module'):
+                        return runner.module_instance.test_module()
+                    else:
+                        return False, "Module instance does not support testing"
+                except Exception as e:
+                    Log.e(TAG, f"Error testing running module {module_id}", error=e)
+                    return False, str(e)
+
+        # Fallback to temporary instantiation
+        modules = self.scan_modules()
+        if module_id not in modules:
+            return False, "Module not found"
+            
+        try:
+            module_info = modules[module_id]
+            module_path = module_info["path"]
+            module_dir = os.path.dirname(module_path)
+            
+            # Ensure module directory is in path for imports
+            if module_dir not in sys.path:
+                sys.path.insert(0, module_dir)
+
+            spec = importlib.util.spec_from_file_location(f"test_{module_id}", module_path)
+            if spec is None:
+                return False, f"Could not load spec for {module_path}"
+                
+            module_lib = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module_lib)
+            
+            if not hasattr(module_lib, 'create_module'):
+                return False, "Module missing 'create_module' factory function"
+
+            ctx = ModuleContext(module_id, self)
+            instance = module_lib.create_module(ctx)
+            
+            if hasattr(instance, 'test_module'):
+                return instance.test_module()
+            else:
+                return False, "Module does not support testing"
+        except Exception as e:
+            Log.e(TAG, f"Error testing module {module_id}", error=e)
+            return False, str(e)

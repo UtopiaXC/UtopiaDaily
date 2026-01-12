@@ -1,5 +1,5 @@
 from abc import ABC
-from typing import Any, List, Dict, Optional
+from typing import Any, List, Dict, Optional, Tuple
 from datetime import datetime
 
 class BaseModule(ABC):
@@ -74,6 +74,13 @@ class BaseModule(ABC):
         Called when module is disabled.
         """
         return True
+
+    def test_module(self) -> Tuple[bool, str]:
+        """
+        Called to test if the module is available/working correctly.
+        Returns a tuple (success, message).
+        """
+        return True, "No self-test implemented"
 
     def execute_schedule_task(self, cron: str, task_key: str, timestamp: datetime) -> bool:
         """

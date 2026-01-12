@@ -51,6 +51,9 @@ class VersionedFileHandler(logging.FileHandler):
 
     def emit(self, record):
         try:
+            if self.stream is None:
+                self.stream = self._open()
+                
             now_date = datetime.now().strftime("%Y%m%d")
             rollover = False
             if now_date != self.current_date:
@@ -58,9 +61,16 @@ class VersionedFileHandler(logging.FileHandler):
                 self.current_index = 1
                 rollover = True
             elif self.max_bytes > 0:
-                if self.stream.tell() >= self.max_bytes:
-                    self.current_index += 1
-                    rollover = True
+                # Check if stream is valid before calling tell()
+                if self.stream and hasattr(self.stream, 'tell'):
+                    try:
+                        if self.stream.tell() >= self.max_bytes:
+                            self.current_index += 1
+                            rollover = True
+                    except ValueError:
+                        # Stream might be closed
+                        self.stream = self._open()
+                        
             if rollover:
                 self.close()
                 self.baseFilename = self._fmt_filename(self.current_date, self.current_index)
@@ -108,6 +118,11 @@ class Log:
 
         except Exception as e:
             print(f"Warning: Failed to setup log handlers: {e}")
+
+    @classmethod
+    def get_logger(cls):
+        cls._ensure_initialized()
+        return cls._logger
 
     @classmethod
     def d(cls, tag, msg):
