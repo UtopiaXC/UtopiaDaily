@@ -3,7 +3,7 @@ import time
 from sqlalchemy.orm import Session
 from src.database.models import User, UserSession, UserRole
 from src.utils.security import crypto_manager
-from src.management.schemas import LoginRequest, LoginResponse, UserResponse
+from src.web.dashboard.schemas import LoginRequest, LoginResponse, UserResponse
 
 class AuthService:
     def login(self, db: Session, request: LoginRequest, ip_address: str, user_agent: str) -> LoginResponse:

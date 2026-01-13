@@ -14,7 +14,7 @@ sys.path.append(project_root)
 
 from src.database.migration_manager import migration_manager
 from src.scraper.scraper import run_scraper_service
-from src.management.server import run_management_server
+from src.web.server import run_web_server
 
 children_processes = []
 
@@ -59,15 +59,15 @@ def main():
     children_processes.append(scraper_process)
     Log.i(TAG,f"Scraper Process up: {scraper_process.pid}")
 
-    # Start Management API Server
-    api_process = multiprocessing.Process(
-        target=run_management_server,
+    # Start Web Server (Dashboard + Newspaper)
+    web_process = multiprocessing.Process(
+        target=run_web_server,
         kwargs={"host": "0.0.0.0", "port": 8000},
-        name="ManagementAPIServer"
+        name="WebServer"
     )
-    api_process.start()
-    children_processes.append(api_process)
-    Log.i(TAG,f"API Process up: {api_process.pid}")
+    web_process.start()
+    children_processes.append(web_process)
+    Log.i(TAG,f"Web Process up: {web_process.pid}")
 
     try:
         while True:

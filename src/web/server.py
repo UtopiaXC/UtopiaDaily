@@ -2,7 +2,7 @@ import uvicorn
 import logging
 from src.utils.logger.logger import Log
 
-TAG = "MANAGEMENT_SERVER"
+TAG = "WEB_SERVER"
 
 class TagInjectionFilter(logging.Filter):
     def __init__(self, tag_prefix):
@@ -15,17 +15,17 @@ class TagInjectionFilter(logging.Filter):
             record.msg = f"[{self.tag_prefix}] {record.msg}"
         return True
 
-def run_management_server(host="0.0.0.0", port=8000):
+def run_web_server(host="0.0.0.0", port=8000):
     """
     Starts the FastAPI server using Uvicorn.
     This function is intended to be run in a separate process.
     """
-    Log.i(TAG, f"Starting Management Server on {host}:{port}")
+    Log.i(TAG, f"Starting Web Server on {host}:{port}")
     
     our_logger = Log.get_logger()
     
     # Unified TAG for all uvicorn logs
-    WEB_SERVER_TAG = "MANAGEMENT_WEB_SERVER"
+    WEB_SERVER_TAG = "WEB_SERVER_CORE"
 
     for logger_name in ["uvicorn", "uvicorn.error", "uvicorn.access"]:
         logger = logging.getLogger(logger_name)
@@ -43,7 +43,7 @@ def run_management_server(host="0.0.0.0", port=8000):
 
     try:
         uvicorn.run(
-            "src.management.backend_entry:app",
+            "src.web.entry:app",
             host=host,
             port=port,
             log_level="info",

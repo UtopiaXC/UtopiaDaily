@@ -17,7 +17,7 @@ src/scraper/modules/external/
     ├── locales/           <-- 国际化资源目录 (可选，推荐使用)
     │   ├── en_US.json
     │   └── zh_CN.json
-    └── requirements.txt   <-- 依赖
+    └── requirements.txt   <-- 依赖文件 (可选，用于定义模组特有的第三方包，尽量不要使用)
 ```
 
 ## 2. 开发规范 (api.py)
@@ -54,7 +54,18 @@ def create_module(context):
 
 模组类继承自 `BaseModule`，可以使用以下方法与系统交互。
 
-### 3.1 配置管理
+### 3.1 依赖管理 (新增)
+
+#### `install_requirements`
+如果模组依赖于系统未提供的第三方 Python 包，请在 `enable_module` 或 `test_module` 中调用此方法。系统会自动读取模组目录下的 `requirements.txt` 并将依赖安装到模组专属的 `libs` 目录中，避免污染全局环境。
+
+```python
+def install_requirements(self, requirements_file: str = "requirements.txt") -> bool
+```
+*   **requirements_file**: 依赖文件名，默认为 "requirements.txt"。
+*   **返回**: True 表示安装成功，False 表示失败。
+
+### 3.2 配置管理
 
 #### `set_module_config`
 注册或更新模块的配置项。通常在 `enable_module` 中调用。
@@ -85,7 +96,7 @@ def get_module_config(self, key: str) -> str
 def drop_module_config(self, key: str)
 ```
 
-### 3.2 任务调度
+### 3.3 任务调度
 
 #### `set_module_schedule_task`
 注册一个定时任务。通常在 `enable_module` 中调用。
@@ -105,7 +116,7 @@ def set_module_schedule_task(self, key: str, description: str, cron: str, force_
 def get_module_schedule_task(self, key: str) -> str
 ```
 
-### 3.3 数据处理
+### 3.4 数据处理
 
 #### `save_structured_results`
 将抓取结果保存到系统数据库。
@@ -125,10 +136,10 @@ def mark_message_tag(self, message: str) -> List[Dict[str, Any]]
 *   **message**: 需要打标的文本内容。
 *   **返回**: 标签列表，每个元素包含 `tag` 和 `confidence`。
 
-### 3.4 生命周期回调 (需实现)
+### 3.5 生命周期回调 (需实现)
 
 #### `enable_module`
-模组启用时被调用。请在此处注册配置和任务。
+模组启用时被调用。请在此处注册配置和任务。**如果模组有第三方依赖，建议在此处调用 `install_requirements`。**
 
 ```python
 def enable_module(self) -> bool
@@ -143,7 +154,7 @@ def disable_module(self) -> bool
 ```
 
 #### `test_module`
-模组自检接口。用于验证模组可用性（如网络连接、API 密钥有效性）。必须实现，启用模组会调用此方法检查模组可用性，如果没有或检查失败则不允许启用模组。
+模组自检接口。用于验证模组可用性（如网络连接、API 密钥有效性）。必须实现，启用模组会调用此方法检查模组可用性，如果没有或检查失败则不允许启用模组。**建议在此处也调用 `install_requirements` 以确保测试环境完整。**
 
 ```python
 def test_module(self) -> Tuple[bool, str]
@@ -218,6 +229,12 @@ MODULE_META = {
 class MyModule(BaseModule):
     
     def enable_module(self) -> bool:
+        # 1. 安装依赖 (如果存在 requirements.txt)
+        if not self.context.install_requirements():
+            Log.e("MyModule", "Failed to install dependencies")
+            return False
+
+        # 2. 注册配置
         self.set_module_config(
             key="target_url",
             description="module.example.config.url.desc", # 使用 I18n Key
@@ -232,7 +249,11 @@ class MyModule(BaseModule):
         return True
 
     def test_module(self) -> Tuple[bool, str]:
-        # 实现自检逻辑
+        # 1. 确保依赖已安装 (测试时也需要)
+        if not self.context.install_requirements():
+            return False, "Failed to install dependencies"
+
+        # 2. 实现自检逻辑
         url = self.get_module_config("target_url")
         if not url:
             return False, "URL not configured"

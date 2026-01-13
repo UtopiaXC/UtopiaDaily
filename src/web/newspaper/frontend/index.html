@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Utopia Daily</title>
+    <!-- Core Libraries -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Theme Loader Style -->
+    <style>
+        [v-cloak] { display: none; }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div id="app" v-cloak>
+        <!-- Dynamic Theme Component -->
+        <!-- We pass data as props to the theme component -->
+        <component
+            :is="currentThemeComponent"
+            :t="t"
+            :current-locale="currentLocale"
+            :news-data="newsData"
+            @change-locale="changeLocale"
+            @refresh-news="fetchNews"
+        ></component>
+
+        <div v-if="loading" class="fixed inset-0 flex items-center justify-center bg-white z-50">
+            <div class="text-xl text-gray-600">Loading Utopia Daily...</div>
+        </div>
+
+        <div v-if="error" class="fixed inset-0 flex items-center justify-center bg-red-50 z-50">
+            <div class="text-red-600">{{ error }}</div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, defineAsyncComponent, ref } = Vue
+
+        createApp({
+            data() {
+                return {
+                    currentTheme: 'default',
+                    currentThemeComponent: null,
+                    loading: true,
+                    error: null,
+                    currentLocale: 'en_US',
+                    translations: {},
+                    // Data to be passed to the theme
+                    newsData: []
+                }
+            },
+            async created() {
+                try {
+                    // 1. Load System Config
+                    this.currentTheme = 'default';
+
+                    const savedLocale = localStorage.getItem('locale') || 'en_US';
+                    await this.changeLocale(savedLocale);
+
+                    // 2. Load Theme Component
+                    await this.loadTheme(this.currentTheme);
+
+                    // 3. Fetch Initial Data (The "Controller" logic)
+                    await this.fetchNews();
+
+                } catch (e) {
+                    console.error("Init failed", e);
+                    this.error = "Failed to initialize application.";
+                } finally {
+                    this.loading = false;
+                }
+            },
+            methods: {
+                async loadTheme(themeName) {
+                    // Load the theme's HTML template
+                    const templateRes = await axios.get(`/themes/${themeName}/template.html`);
+                    const templateHtml = templateRes.data;
+
+                    // Create a dynamic Vue component using the loaded HTML template
+                    this.currentThemeComponent = {
+                        props: ['t', 'currentLocale', 'newsData'],
+                        emits: ['changeLocale', 'refreshNews'],
+                        template: templateHtml
+                    };
+                },
+                async changeLocale(locale) {
+                    this.currentLocale = locale;
+                    localStorage.setItem('locale', locale);
+                    try {
+                        const res = await axios.get(`/api/common/i18n/${locale}`);
+                        this.translations = res.data;
+                    } catch (e) {
+                        console.error("Failed to load translations", e);
+                    }
+                },
+                async fetchNews() {
+                    try {
+                        // This is where the "Controller" fetches data from the API
+                        const res = await axios.get('/api/newspaper/latest');
+                        this.newsData = res.data.news;
+                    } catch (e) {
+                        console.error("Failed to fetch news", e);
+                    }
+                },
+                t(key) {
+                    return this.translations[key] || key;
+                }
+            }
+        }).mount('#app')
+    </script>
+</body>
+</html>

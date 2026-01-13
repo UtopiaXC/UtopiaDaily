@@ -1,0 +1,26 @@
+<div class="min-h-screen flex flex-col items-center justify-center">
+    <div class="text-center">
+        <h1 class="text-4xl font-bold text-gray-900 mb-4">{{ t('config.system_version.desc') }}</h1>
+        <p class="text-xl text-gray-600">Current Locale: {{ currentLocale }}</p>
+
+        <div class="mt-8 p-6 bg-white rounded shadow-md w-full max-w-md">
+            <h2 class="text-2xl font-bold mb-4">Latest News</h2>
+            <div v-if="newsData && newsData.length > 0">
+                <ul>
+                    <li v-for="item in newsData" :key="item.id" class="border-b py-2">
+                        {{ item.title }}
+                    </li>
+                </ul>
+            </div>
+            <div v-else class="text-gray-500">
+                No news available.
+            </div>
+            <button @click="$emit('refreshNews')" class="mt-4 text-blue-500 hover:underline">Refresh</button>
+        </div>
+
+        <div class="mt-4 space-x-2">
+            <button @click="$emit('changeLocale', 'en_US')" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition">English</button>
+            <button @click="$emit('changeLocale', 'zh_CN')" class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition">中文</button>
+        </div>
+    </div>
+</div>

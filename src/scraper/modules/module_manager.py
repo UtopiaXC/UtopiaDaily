@@ -5,6 +5,7 @@ import threading
 import time
 import traceback
 import json
+import subprocess
 from datetime import datetime
 from typing import Dict, Any, Optional, List
 from croniter import croniter
@@ -43,6 +44,13 @@ class ModuleContext:
         Log.i(TAG, f"[{self.module_id}] Data saved: {value.get('title', 'No Title')}")
         # TODO: Save to actual database
         return {"status": "success"}
+    
+    def install_requirements(self, requirements_file: str):
+        """
+        Install requirements from a file into a local 'libs' directory.
+        This allows modules to have their own dependencies without polluting the global environment.
+        """
+        return self._manager.install_module_requirements(self.module_id, requirements_file)
 
 
 class ModuleRunner(threading.Thread):
@@ -66,6 +74,14 @@ class ModuleRunner(threading.Thread):
     def _load_module(self):
         try:
             module_dir = os.path.dirname(self.module_path)
+            
+            # 1. Add local libs to sys.path if they exist
+            libs_dir = os.path.join(module_dir, "libs")
+            if os.path.exists(libs_dir) and libs_dir not in sys.path:
+                # Insert at the beginning to prioritize local libs
+                sys.path.insert(0, libs_dir)
+                Log.i(TAG, f"[{self.module_id}] Added local libs to path: {libs_dir}")
+
             if module_dir not in sys.path:
                 sys.path.insert(0, module_dir)
 
@@ -297,6 +313,10 @@ class ModuleManager:
             return False
         try:
             module_info = modules[module_id]
+            
+            # Note: We do NOT install requirements automatically here anymore.
+            # The module's enable_module() or test_module() should call context.install_requirements()
+
             spec = importlib.util.spec_from_file_location(f"setup_{module_id}", module_info["path"])
             module_lib = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module_lib)
@@ -315,6 +335,38 @@ class ModuleManager:
                 return False
         except Exception as e:
             Log.e(TAG, f"Error enabling module {module_id}", error=e)
+            return False
+
+    def install_module_requirements(self, module_id, requirements_file):
+        """
+        Installs requirements for a specific module into its local 'libs' directory.
+        """
+        modules = self.scan_modules()
+        if module_id not in modules:
+            Log.e(TAG, f"[{module_id}] Module not found for installing requirements")
+            return False
+
+        module_path = modules[module_id]["path"]
+        module_dir = os.path.dirname(module_path)
+        req_path = os.path.join(module_dir, requirements_file)
+        libs_dir = os.path.join(module_dir, "libs")
+
+        if not os.path.exists(req_path):
+            Log.w(TAG, f"[{module_id}] Requirements file not found: {req_path}")
+            return False
+
+        Log.i(TAG, f"[{module_id}] Installing requirements from {requirements_file} to {libs_dir}...")
+        try:
+            # pip install -r requirements.txt -t libs
+            subprocess.check_call(
+                [sys.executable, "-m", "pip", "install", "-r", req_path, "-t", libs_dir],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.PIPE
+            )
+            Log.i(TAG, f"[{module_id}] Dependencies installed successfully.")
+            return True
+        except subprocess.CalledProcessError as e:
+            Log.e(TAG, f"[{module_id}] Failed to install dependencies", error=e)
             return False
 
     def start_module(self, module_id):
@@ -380,9 +432,17 @@ class ModuleManager:
             module_path = module_info["path"]
             module_dir = os.path.dirname(module_path)
             
+            # Note: We do NOT install requirements automatically here anymore.
+            # The module's test_module() should call context.install_requirements() if needed.
+
             # Ensure module directory is in path for imports
             if module_dir not in sys.path:
                 sys.path.insert(0, module_dir)
+            
+            # Also add libs dir if it exists (in case they were installed previously)
+            libs_dir = os.path.join(module_dir, "libs")
+            if os.path.exists(libs_dir) and libs_dir not in sys.path:
+                sys.path.insert(0, libs_dir)
 
             spec = importlib.util.spec_from_file_location(f"test_{module_id}", module_path)
             if spec is None:
