@@ -1,3 +1,4 @@
+import hashlib
 from src.database.connection import system_session_scope
 from src.database.models import UserRole, User
 from src.utils.logger.logger import Log
@@ -9,28 +10,22 @@ DESCRIPTION = "Initialize default user roles and admin user"
 
 TAG = "MIGRATION_002"
 
-# Convert list of permissions to dict for JSON storage if needed, 
-# or just store list if model supports it. 
-# Based on AuthMiddleware logic: 
-# if isinstance(perms, dict): request.state.permissions = [k for k, v in perms.items() if v]
-# else: request.state.permissions = perms or []
-# So we can store a list directly.
-
 DEFAULT_ROLES = [
     {
         "name": "admin",
-        "description": "System Administrator",
+        "description": "Administrator",
         "permissions": Permissions.get_default_admin() # List of all permissions
     },
     {
         "name": "user",
-        "description": "Standard User",
+        "description": "User",
         "permissions": Permissions.get_default_user()
     }
 ]
 
 DEFAULT_ADMIN = {
     "username": "admin",
+    "nickname": "Administrator",
     "password": "admin",
     "email": "admin@admin.com",
     "role_name": "admin"
@@ -64,9 +59,15 @@ def upgrade():
             existing_user = session.query(User).filter_by(username=DEFAULT_ADMIN["username"]).first()
             if not existing_user:
                 Log.i(TAG, f"Creating default admin user: {DEFAULT_ADMIN['username']}")
+                
+                # Simulate frontend MD5 hashing
+                raw_password = DEFAULT_ADMIN["password"]
+                md5_password = hashlib.md5(raw_password.encode()).hexdigest()
+                
                 new_user = User(
                     username=DEFAULT_ADMIN["username"],
-                    password_hash=crypto_manager.get_password_hash(DEFAULT_ADMIN["password"]),
+                    nickname=DEFAULT_ADMIN["nickname"],
+                    password_hash=crypto_manager.get_password_hash(md5_password),
                     email=DEFAULT_ADMIN["email"],
                     role_id=admin_role.id,
                     is_active=True

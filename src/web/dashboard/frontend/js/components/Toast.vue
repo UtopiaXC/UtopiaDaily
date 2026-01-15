@@ -1,5 +1,5 @@
 <template>
-    <div class="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
+    <div class="fixed bottom-4 right-4 z-[60] flex flex-col gap-2">
         <transition-group name="toast">
             <div v-for="toast in toasts" :key="toast.id"
                  :class="['px-4 py-3 rounded shadow-lg text-white text-sm flex items-center min-w-[200px]',

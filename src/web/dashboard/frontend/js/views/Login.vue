@@ -73,6 +73,7 @@
 import CustomSelect from '../components/CustomSelect.vue';
 import CaptchaModal from '../components/CaptchaModal.vue';
 import http from '../utils/http.js';
+import MD5 from 'crypto-js/md5';
 
 export default {
     components: { CustomSelect, CaptchaModal },
@@ -108,9 +109,12 @@ export default {
             this.error = null;
 
             try {
+                // Hash password with MD5 before sending
+                const hashedPassword = MD5(this.password).toString();
+
                 const payload = {
                     username: this.username,
-                    password: this.password,
+                    password: hashedPassword,
                     remember_me: this.rememberMe,
                     captcha_id: id,
                     captcha_code: code

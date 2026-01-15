@@ -26,6 +26,7 @@ class User(BaseModel):
     __tablename__ = 'user'
 
     username = Column(String(50), unique=True, nullable=False, index=True)
+    nickname = Column(String(100), nullable=True) # 支持 Unicode 的昵称
     password_hash = Column(String(255), nullable=False) # 存储哈希后的密码，绝不存明文
     email = Column(String(255), nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)

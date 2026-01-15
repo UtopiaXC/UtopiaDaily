@@ -19,7 +19,7 @@
                 @update:locale="$emit('update:locale', $event)"
             />
             <main class="flex-1 overflow-x-hidden overflow-y-auto p-8 bg-gray-100 dark:bg-gray-900 transition-colors duration-200">
-                <component :is="currentTabComponent" :t="t" :all-locales="allLocales" />
+                <component :is="currentTabComponent" :t="t" :all-locales="allLocales" :current-user="user" />
             </main>
         </div>
     </div>
@@ -30,9 +30,10 @@ import Sidebar from '../layout/Sidebar.vue';
 import Header from '../layout/Header.vue';
 import Overview from './tabs/Overview.vue';
 import SystemConfig from './tabs/SystemConfig.vue';
+import UserManager from './tabs/UserManager.vue';
 
 export default {
-    components: { Sidebar, Header, Overview, SystemConfig },
+    components: { Sidebar, Header, Overview, SystemConfig, UserManager },
     props: {
         serverName: String,
         user: Object,
@@ -59,6 +60,7 @@ export default {
             switch(this.currentTab) {
                 case 'dashboard': return 'Overview';
                 case 'system_config': return 'SystemConfig';
+                case 'user_manager': return 'UserManager';
                 default: return {
                     props: ['t'],
                     template: `

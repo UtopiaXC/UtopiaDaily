@@ -3,11 +3,7 @@ import time
 import sys
 import os
 import signal
-
-from numpy.f2py.auxfuncs import throw_error
-
 from src.utils.logger.logger import Log
-from src.utils.i18n import i18n
 
 TAG="APP"
 

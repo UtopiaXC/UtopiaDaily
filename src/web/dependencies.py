@@ -20,10 +20,9 @@ class RequirePermission:
         self.permission = permission
 
     def __call__(self, request: Request, user = Depends(get_current_user)):
-        # 1. Check for Super Admin
         user_perms = getattr(request.state, "permissions", [])
-        if Permissions.ADMIN_ACCESS in user_perms:
-            return True
+        
+        # Check if user has the required permission
         if self.permission not in user_perms:
             raise HTTPException(status_code=403, detail=f"Missing permission: {self.permission}")
         return True
