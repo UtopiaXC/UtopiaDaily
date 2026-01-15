@@ -19,6 +19,7 @@ class ConfigItem(BaseModel):
     type: str
     options: Optional[list] = None
     is_editable: bool = True
+    order: int = 0
 
 class ConfigUpdate(BaseModel):
     value: str
@@ -35,6 +36,7 @@ async def get_configs(group: Optional[str] = None, db: Session = Depends(get_db)
     query = db.query(SystemConfig)
     if group:
         query = query.filter(SystemConfig.group == group)
+    query = query.order_by(SystemConfig.order.asc())
     return query.all()
 
 @router.put("/{key}", dependencies=[Depends(RequirePermission(Permissions.SYSTEM_CONFIG_EDIT))])
@@ -67,12 +69,7 @@ async def update_config(key: str, update: ConfigUpdate, db: Session = Depends(ge
                     valid_values.append(opt.get("value"))
                 else:
                     valid_values.append(str(opt))
-            
-            # Special case for default_locale which might have dynamic options not in DB
-            # But for strict security, we should validate. 
-            # However, default_locale options are empty in DB (loaded by frontend).
-            # So if options is empty/null, we skip validation (or we should validate against languages.json)
-            
+
             if valid_values and new_value not in valid_values:
                  raise HTTPException(status_code=400, detail=f"Invalid option. Must be one of {valid_values}")
 

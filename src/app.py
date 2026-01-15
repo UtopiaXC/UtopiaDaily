@@ -3,7 +3,11 @@ import time
 import sys
 import os
 import signal
+
+from numpy.f2py.auxfuncs import throw_error
+
 from src.utils.logger.logger import Log
+from src.utils.i18n import i18n
 
 TAG="APP"
 
@@ -39,7 +43,7 @@ def cleanup_and_exit():
 
 
 def main():
-    # Database Migrations
+    # 1. Run Database Migrations
     try:
         Log.i(TAG, "Initializing database and checking migrations...")
         migration_manager.run_migrations()
@@ -47,7 +51,7 @@ def main():
         Log.e(TAG, "Critical error during database migration. Exiting.", error=e)
         sys.exit(1)
 
-    # System Configs
+    # 2. Initialize System Configs (e.g. Log Level)
     try:
         with system_session_scope() as session:
             log_level_config = session.query(SystemConfig).filter_by(key="log_level").first()
@@ -62,7 +66,7 @@ def main():
         # Fallback to INFO is handled by default in Log class, but explicit set is safer
         Log.set_level("INFO")
 
-    # Start Services
+    # 3. Start Services
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
 
@@ -75,7 +79,7 @@ def main():
     children_processes.append(scraper_process)
     Log.i(TAG,f"Scraper Process up: {scraper_process.pid}")
 
-    # Start Web Server
+    # Start Web Server (Dashboard + Newspaper)
     web_process = multiprocessing.Process(
         target=run_web_server,
         kwargs={"host": "0.0.0.0", "port": 8000},
@@ -99,5 +103,6 @@ def main():
 
 
 if __name__ == "__main__":
+    Log.setup_global_exception_handler()
     Log.i(TAG,f"Utopia Daily starting...")
     main()

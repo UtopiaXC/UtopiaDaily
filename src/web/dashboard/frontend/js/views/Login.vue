@@ -3,10 +3,6 @@
         <div class="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-xl w-96 relative border border-gray-100 dark:border-gray-700 transition-colors duration-200">
             <!-- Top Right Controls -->
             <div class="absolute top-4 right-4 flex items-center space-x-2">
-                <!-- Dark Mode Toggle -->
-                <button @click="$emit('toggle-dark-mode')" class="p-2 rounded-full text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition focus:outline-none">
-                    <span class="material-icons text-xl">{{ isDarkMode ? 'light_mode' : 'dark_mode' }}</span>
-                </button>
 
                 <!-- Language Switcher (Icon Style) -->
                 <CustomSelect

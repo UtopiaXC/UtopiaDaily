@@ -2,7 +2,7 @@
     "config.system_version.desc": "Current system version",
     "config.log_level.desc": "System logging level",
     "config.default_locale.desc": "Default System Language",
-    "config.server_name.desc": "Server Name (Displayed in Title)",
+    "config.server_name.desc": "Server Name",
 
     "common.loading": "Loading...",
     "common.save": "Save",

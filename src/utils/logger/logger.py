@@ -143,10 +143,6 @@ class Log:
         }
         
         level = level_map.get(level_str.upper(), logging.INFO)
-
-
-        cls.w("LOGGER", f"Log level will change to {level_str.upper()} "
-                        f"(Because of level modifying, successfully alert may not be print into logfile)")
         
         # Update Console Handler
         if cls._console_handler:
@@ -155,9 +151,28 @@ class Log:
         # Update System File Handler
         if cls._sys_handler:
             cls._sys_handler.setLevel(level)
+            
+        # We don't change Error Handler (always ERROR)
+        
+        cls.i("LOGGER", f"Log level changed to {level_str.upper()}")
 
-        cls.w("LOGGER", f"Log level changed to {level_str.upper()} successfully")
+    @classmethod
+    def setup_global_exception_handler(cls):
+        """
+        Sets up a global exception handler to log uncaught exceptions before exit.
+        """
+        def handle_exception(exc_type, exc_value, exc_traceback):
+            # Ignore KeyboardInterrupt (Ctrl+C) so it exits gracefully
+            if issubclass(exc_type, KeyboardInterrupt):
+                sys.__excepthook__(exc_type, exc_value, exc_traceback)
+                return
 
+            cls.e("FATAL", "Uncaught exception caused program exit", error=(exc_type, exc_value, exc_traceback))
+            
+            # Call the default handler to ensure proper exit code and stderr output
+            sys.__excepthook__(exc_type, exc_value, exc_traceback)
+
+        sys.excepthook = handle_exception
 
     @classmethod
     def get_logger(cls):
