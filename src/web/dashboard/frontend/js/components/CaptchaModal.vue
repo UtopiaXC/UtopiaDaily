@@ -4,15 +4,12 @@
             <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-80 transform transition-all scale-100">
                 <h3 class="text-lg font-bold mb-4 text-gray-800 dark:text-white">{{ t('captcha.title') }}</h3>
                 <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">{{ t('captcha.desc') }}</p>
-
-                <!-- Captcha Error Message -->
                 <div v-if="error" class="bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 text-red-700 dark:text-red-400 p-2 rounded mb-4 text-xs flex items-start">
                     <span class="material-icons text-xs mr-1 mt-0.5">error</span>
                     <span>{{ error }}</span>
                 </div>
 
                 <div class="flex gap-2 mb-4">
-                    <!-- Captcha Image with Loading State -->
                     <div class="border dark:border-gray-600 rounded overflow-hidden flex-1 bg-gray-50 dark:bg-gray-700 h-16 flex items-center justify-center relative">
                         <img v-if="svg" :src="svg" alt="Captcha" class="h-full w-full object-cover">
                         <div v-if="loading" class="absolute inset-0 bg-white dark:bg-gray-800 bg-opacity-80 flex items-center justify-center">

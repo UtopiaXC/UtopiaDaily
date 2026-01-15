@@ -2,7 +2,6 @@
     <header class="h-16 bg-white dark:bg-gray-800 shadow-sm flex items-center justify-between px-8 z-10 border-b border-gray-200 dark:border-gray-700 transition-colors duration-200">
         <h2 class="text-xl font-bold text-gray-800 dark:text-white">{{ currentTabLabel }}</h2>
         <div class="flex items-center space-x-4">
-            <!-- Dark Mode Toggle -->
             <button @click="$emit('toggle-dark-mode')" class="p-2 rounded-full text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition focus:outline-none">
                 <span class="material-icons text-xl">{{ isDarkMode ? 'light_mode' : 'dark_mode' }}</span>
             </button>

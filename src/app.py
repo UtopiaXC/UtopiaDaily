@@ -39,15 +39,12 @@ def cleanup_and_exit():
 
 
 def main():
-    # 1. Run Database Migrations
     try:
         Log.i(TAG, "Initializing database and checking migrations...")
         migration_manager.run_migrations()
     except Exception as e:
         Log.e(TAG, "Critical error during database migration. Exiting.", error=e)
         sys.exit(1)
-
-    # 2. Initialize System Configs (e.g. Log Level)
     try:
         with system_session_scope() as session:
             log_level_config = session.query(SystemConfig).filter_by(key="log_level").first()
@@ -59,14 +56,9 @@ def main():
                 Log.set_level("INFO")
     except Exception as e:
         Log.e(TAG, "Failed to initialize system configs", error=e)
-        # Fallback to INFO is handled by default in Log class, but explicit set is safer
         Log.set_level("INFO")
-
-    # 3. Start Services
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
-
-    # Start Scraper Service
     scraper_process = multiprocessing.Process(
         target=run_scraper_service,
         name="ScraperService"
@@ -74,8 +66,6 @@ def main():
     scraper_process.start()
     children_processes.append(scraper_process)
     Log.i(TAG,f"Scraper Process up: {scraper_process.pid}")
-
-    # Start Web Server (Dashboard + Newspaper)
     web_process = multiprocessing.Process(
         target=run_web_server,
         kwargs={"host": "0.0.0.0", "port": 8000},

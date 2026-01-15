@@ -15,10 +15,6 @@ from src.utils.i18n import i18n
 from src.web.dashboard.routers.auth import get_locale
 
 router = APIRouter(prefix="/api/dashboard/user-manager", tags=["User Manager"])
-
-# --- Schemas ---
-
-# Role Schemas
 class RoleBase(BaseModel):
     name: str
     description: Optional[str] = None
@@ -44,7 +40,6 @@ class RoleResponse(RoleBase):
     class Config:
         from_attributes = True
 
-# User Schemas
 class UserBase(BaseModel):
     username: str
     nickname: Optional[str] = None
@@ -72,7 +67,6 @@ class UserResponse(UserBase):
 class PasswordResetResponse(BaseModel):
     new_password: str
 
-# --- Dependencies ---
 def get_db():
     db = system_db_manager.get_session()
     try:
@@ -90,7 +84,6 @@ def generate_secure_password(length=12):
                 and any(c in "!@#$%^&*" for c in password)):
             return password
 
-# --- Helper Functions ---
 def check_last_admin(db: Session, target_user_id: str):
     """
     Check if the target user is the last active admin.
@@ -98,13 +91,12 @@ def check_last_admin(db: Session, target_user_id: str):
     """
     admin_role = db.query(UserRole).filter(UserRole.name == "admin").first()
     if not admin_role:
-        return False # Should not happen if system initialized correctly
+        return False
 
     target_user = db.query(User).filter(User.id == target_user_id).first()
     if not target_user or target_user.role_id != admin_role.id:
-        return False # Not an admin, so not the last admin
+        return False
 
-    # Count active admins excluding the target user
     other_admins_count = db.query(User).filter(
         User.role_id == admin_role.id,
         User.is_active == True,
@@ -114,16 +106,11 @@ def check_last_admin(db: Session, target_user_id: str):
     return other_admins_count == 0
 
 def validate_username(username: str):
-    # Min length 3
     if len(username) < 3:
         return False
-    # Only letters, numbers, and common symbols (no spaces, no unicode)
-    # Allowed: a-z, A-Z, 0-9, _ - . @
     if not re.match(r'^[a-zA-Z0-9_\-\.@]+$', username):
         return False
     return True
-
-# --- Role Endpoints ---
 
 @router.get("/permissions", dependencies=[Depends(RequirePermission(Permissions.USER_MANAGER_VIEW))])
 async def get_all_permissions():
@@ -136,11 +123,9 @@ async def get_roles(db: Session = Depends(get_db)):
     result = []
     for role in roles:
         count = db.query(User).filter(User.role_id == role.id).count()
-        
         perms = role.permissions
         if isinstance(perms, list):
             perms = {p: True for p in perms}
-            
         role_dict = {
             "id": role.id,
             "name": role.name,
@@ -175,11 +160,9 @@ async def update_role(role_id: str, update: RoleUpdate, db: Session = Depends(ge
     if update.name != role.name:
         if db.query(UserRole).filter(UserRole.name == update.name).first():
             raise HTTPException(status_code=400, detail="Role name already exists")
-    
-    # Admin Role Protection: Permissions cannot be changed, must be all
+
     if role.name == "admin":
         all_perms = Permissions.get_all()
-        # Force enable all permissions
         update.permissions = {p: True for p in all_perms}
     
     role.name = update.name
@@ -248,17 +231,8 @@ async def create_user(user: UserCreate, req: Request, db: Session = Depends(get_
             detail = i18n.t("login.email_exists", locale=locale)
             raise HTTPException(status_code=400, detail=detail)
     
-    # Password length check (raw password length, not MD5)
-    # But wait, frontend sends MD5. We cannot check length of original password here!
-    # MD5 is always 32 chars.
-    # So length check MUST be done on frontend.
-    # Backend can only check if it's a valid MD5 string (32 hex chars).
-    # If we want to enforce length on backend, we must send raw password (over HTTPS) or use a different protocol.
-    # Given the requirement "password must be MD5 hashed before sending", backend receives hash.
-    # So we skip length check here and rely on frontend, OR we check if it looks like an MD5 hash.
+
     if len(user.password) != 32:
-         # This might be a raw password if someone bypassed frontend
-         # But we assume it's MD5. If it's not 32 chars, it's invalid MD5.
          pass 
 
     role = db.query(UserRole).filter(UserRole.id == user.role_id).first()

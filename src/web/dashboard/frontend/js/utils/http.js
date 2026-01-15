@@ -2,7 +2,6 @@ import axios from 'axios';
 
 const http = axios.create();
 
-// Request Interceptor
 http.interceptors.request.use(config => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -16,7 +15,6 @@ http.interceptors.request.use(config => {
     return config;
 });
 
-// Response Interceptor
 http.interceptors.response.use(response => response, error => {
     if (error.response && error.response.status === 401) {
         const url = error.config.url || '';

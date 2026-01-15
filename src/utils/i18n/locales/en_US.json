@@ -1,8 +1,8 @@
 {
-    "config.system_version.desc": "Current system version",
+    "config.system_version.desc": "System version",
     "config.log_level.desc": "System logging level",
     "config.default_locale.desc": "Default System Language",
-    "config.server_name.desc": "Server Name (Displayed in Title)",
+    "config.server_name.desc": "Server Name",
 
     "common.loading": "Loading...",
     "common.save": "Save",
@@ -98,7 +98,7 @@
     "permission.push_module.edit": "Push Module: Edit",
     "permission.frontend.config.view": "Frontend Config: View",
     "permission.frontend.config.edit": "Frontend Config: Edit",
-    "permission.user_push.settings": "User: Push Settings",
+    "permission.user_push.settings": "User Push: Settings",
 
     "permission_group.system": "System",
     "permission_group.user_manager": "User Management",
@@ -106,5 +106,5 @@
     "permission_group.scraper": "Scraper",
     "permission_group.push_module": "Push Module",
     "permission_group.frontend": "Frontend",
-    "permission_group.user_push": "User Settings"
+    "permission_group.user_push": "User Push"
 }

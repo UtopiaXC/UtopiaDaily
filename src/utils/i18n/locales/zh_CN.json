@@ -1,8 +1,8 @@
 {
-    "config.system_version.desc": "当前系统版本",
+    "config.system_version.desc": "系统版本",
     "config.log_level.desc": "系统日志级别",
     "config.default_locale.desc": "系统默认语言",
-    "config.server_name.desc": "服务器名称 (显示在标题)",
+    "config.server_name.desc": "服务器名称",
 
     "common.loading": "加载中...",
     "common.save": "保存",
@@ -106,5 +106,5 @@
     "permission_group.scraper": "抓取器",
     "permission_group.push_module": "推送模组",
     "permission_group.frontend": "前端",
-    "permission_group.user_push": "用户设置"
+    "permission_group.user_push": "用户推送"
 }

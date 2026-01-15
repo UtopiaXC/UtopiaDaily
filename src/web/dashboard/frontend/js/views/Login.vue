@@ -1,10 +1,7 @@
 <template>
     <div class="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
         <div class="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-xl w-96 relative border border-gray-100 dark:border-gray-700 transition-colors duration-200">
-            <!-- Top Right Controls -->
             <div class="absolute top-4 right-4 flex items-center space-x-2">
-
-                <!-- Language Switcher (Icon Style) -->
                 <CustomSelect
                     :model-value="currentLocale"
                     @update:model-value="$emit('update:locale', $event)"
@@ -109,7 +106,6 @@ export default {
             this.error = null;
 
             try {
-                // Hash password with MD5 before sending
                 const hashedPassword = MD5(this.password).toString();
 
                 const payload = {

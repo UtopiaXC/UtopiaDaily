@@ -19,12 +19,10 @@
                 </div>
 
                 <div class="md:w-2/3 flex gap-3 items-center">
-                    <!-- String Input -->
                     <input v-if="conf.type === 'string'" v-model="conf.value" type="text"
                            :disabled="!conf.is_editable"
                            :class="['flex-1 shadow-sm border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500 transition bg-white dark:bg-gray-700 dark:text-white', !conf.is_editable ? 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed' : '']">
 
-                    <!-- Boolean Input -->
                     <div v-else-if="conf.type === 'boolean'" class="flex-1">
                         <CustomSelect
                             v-if="conf.is_editable"
@@ -34,7 +32,6 @@
                         <input v-else type="text" :value="conf.value" disabled class="flex-1 shadow-sm border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed w-full">
                     </div>
 
-                    <!-- Select Input -->
                     <div v-else-if="conf.type === 'select'" class="flex-1">
                         <CustomSelect
                             v-if="conf.is_editable"
@@ -66,7 +63,7 @@ import http from '../../utils/http.js';
 export default {
     components: { CustomSelect },
     props: ['t', 'allLocales'],
-    inject: ['showToast'], // Inject showToast from App.vue
+    inject: ['showToast'],
     data() {
         return {
             loading: false,
@@ -101,12 +98,7 @@ export default {
                     value: conf.value
                 });
                 this.showToast(this.t('common.saved_success', 'Configuration saved'), 'success');
-
-                // If server_name was updated, emit event to update title (handled by parent/root)
                 if (conf.key === 'server_name') {
-                    // This is a bit tricky deep down, but we can use a global event bus or just reload
-                    // For now, let's just reload the page or let the user refresh manually for title update
-                    // Or better, dispatch a custom event on window
                     window.dispatchEvent(new CustomEvent('server-name-updated', { detail: conf.value }));
                 }
             } catch (err) {

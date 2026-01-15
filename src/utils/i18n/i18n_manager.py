@@ -57,8 +57,7 @@ class I18nManager:
                         
                         if locale_code not in self.translations:
                             self.translations[locale_code] = {}
-                        
-                        # Merge module translations
+
                         self.translations[locale_code].update(module_trans)
                         Log.i(TAG, f"Merged module locale: {locale_code} from {module_locales_dir}")
                 except Exception as e:
@@ -79,27 +78,15 @@ class I18nManager:
         :return: Translated string or the key itself if not found.
         """
         target_locale = locale or self.current_locale
-        
-        # Fallback to default if locale not found
         if target_locale not in self.translations:
             target_locale = self.default_locale
-
-        # Get translation dict
         trans_dict = self.translations.get(target_locale, {})
-        
-        # Resolve key (support dot notation for nested keys if needed, 
-        # but for simplicity here we assume flat keys or we flatten them)
-        # Here we implement simple direct lookup.
         text = trans_dict.get(key)
-        
         if text is None:
-            # Fallback to default locale
             trans_dict = self.translations.get(self.default_locale, {})
             text = trans_dict.get(key)
-
         if text is None:
             return key
-
         try:
             return text.format(**kwargs)
         except Exception as e:

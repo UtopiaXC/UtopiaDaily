@@ -13,12 +13,8 @@ class MigrationManager:
 
     def _ensure_system_tables(self):
         """Ensure the basic system tables exist in system.db."""
-        # Initialize engine
         system_db_manager.init_db()
         engine = system_db_manager._engine
-        
-        # Create tables if they don't exist
-        # Note: We only create tables that belong to system.db
         inspector = inspect(engine)
         
         tables_to_create = [
@@ -56,13 +52,11 @@ class MigrationManager:
     def run_migrations(self):
         """Run all pending migrations."""
         Log.i(TAG, "Checking for pending migrations...")
-        
-        # Ensure System DB tables
+
         self._ensure_system_tables()
         
         applied_versions = self._get_applied_versions()
-        
-        # List migration files
+
         if not os.path.exists(self.migrations_dir):
             os.makedirs(self.migrations_dir)
             
@@ -72,17 +66,12 @@ class MigrationManager:
             module_name = filename[:-3]
             if module_name in applied_versions:
                 continue
-                
             Log.i(TAG, f"Applying migration: {module_name}")
             try:
-                # Import and run migration
                 module_path = f"src.database.migrations.{module_name}"
                 migration_module = importlib.import_module(module_path)
-                
                 if hasattr(migration_module, 'upgrade'):
                     migration_module.upgrade()
-                    
-                    # Record success
                     version_code = getattr(migration_module, 'VERSION_CODE', 0)
                     description = getattr(migration_module, 'DESCRIPTION', '')
                     self._record_migration(module_name, version_code, description)

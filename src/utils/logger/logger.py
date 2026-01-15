@@ -27,13 +27,13 @@ class VersionedFileHandler(logging.FileHandler):
         pattern = re.compile(rf"^{re.escape(self.prefix)}\.{date_str}\.(\d{{2}})\.log$")
         max_idx = 0
         latest_file = None
-        for fname in os.listdir(self.log_dir):
-            match = pattern.match(fname)
+        for log_file_name in os.listdir(self.log_dir):
+            match = pattern.match(log_file_name)
             if match:
                 idx = int(match.group(1))
                 if idx > max_idx:
                     max_idx = idx
-                    latest_file = os.path.join(self.log_dir, fname)
+                    latest_file = os.path.join(self.log_dir, log_file_name)
         if max_idx == 0 or latest_file is None:
             return 1
 
@@ -61,7 +61,6 @@ class VersionedFileHandler(logging.FileHandler):
                 self.current_index = 1
                 rollover = True
             elif self.max_bytes > 0:
-                # Check if stream is valid before calling tell()
                 if self.stream and hasattr(self.stream, 'tell'):
                     try:
                         if self.stream.tell() >= self.max_bytes:
@@ -134,26 +133,17 @@ class Log:
         :param level_str: "DEBUG", "INFO", "WARNING", "ERROR"
         """
         cls._ensure_initialized()
-        
         level_map = {
             "DEBUG": logging.DEBUG,
             "INFO": logging.INFO,
             "WARNING": logging.WARNING,
             "ERROR": logging.ERROR
         }
-        
         level = level_map.get(level_str.upper(), logging.INFO)
-        
-        # Update Console Handler
         if cls._console_handler:
             cls._console_handler.setLevel(level)
-            
-        # Update System File Handler
         if cls._sys_handler:
             cls._sys_handler.setLevel(level)
-            
-        # We don't change Error Handler (always ERROR)
-        
         cls.i("LOGGER", f"Log level changed to {level_str.upper()}")
 
     @classmethod
@@ -162,14 +152,11 @@ class Log:
         Sets up a global exception handler to log uncaught exceptions before exit.
         """
         def handle_exception(exc_type, exc_value, exc_traceback):
-            # Ignore KeyboardInterrupt (Ctrl+C) so it exits gracefully
             if issubclass(exc_type, KeyboardInterrupt):
                 sys.__excepthook__(exc_type, exc_value, exc_traceback)
                 return
 
             cls.e("FATAL", "Uncaught exception caused program exit", error=(exc_type, exc_value, exc_traceback))
-            
-            # Call the default handler to ensure proper exit code and stderr output
             sys.__excepthook__(exc_type, exc_value, exc_traceback)
 
         sys.excepthook = handle_exception

@@ -6,7 +6,6 @@ from src.utils.logger.logger import Log
 
 TAG = "DB_CONNECTION"
 
-# Define paths for two databases
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 SYSTEM_DB_DIR = os.path.join(PROJECT_ROOT, "database", "system")
 DATA_DB_DIR = os.path.join(PROJECT_ROOT, "database", "data")
@@ -72,7 +71,6 @@ class DatabaseManager:
         if self._session_factory:
             self._session_factory.remove()
 
-# Create two separate managers
 system_db_manager = DatabaseManager(SYSTEM_DB_URL, "SYSTEM")
 data_db_manager = DatabaseManager(DATA_DB_URL, "DATA")
 

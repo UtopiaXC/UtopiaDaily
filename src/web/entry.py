@@ -19,7 +19,6 @@ TAG = "WEB_ENTRY"
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup logic
     Log.i(TAG, "Web Server starting...")
     yield
     # Shutdown logic
@@ -36,10 +35,7 @@ def create_app() -> FastAPI:
         lifespan=lifespan
     )
 
-    # 1. Security Middleware (First line of defense)
     app.add_middleware(SecurityMiddleware)
-
-    # 2. CORS Configuration
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
@@ -47,14 +43,9 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    
-    # 3. Auth Middleware (Injects user into request.state)
-    app.add_middleware(AuthMiddleware)
-    
-    # Register Common Routers (i18n, etc.)
-    app.include_router(common_routers.router)
 
-    # Register Dashboard Routers
+    app.add_middleware(AuthMiddleware)
+    app.include_router(common_routers.router)
     app.include_router(dashboard_auth.router)
     app.include_router(dashboard_layout.router)
     app.include_router(dashboard_sys_config.router)
@@ -62,11 +53,7 @@ def create_app() -> FastAPI:
 
     # Register Newspaper Routers
     app.include_router(newspaper_news.router)
-
     current_dir = os.path.dirname(os.path.abspath(__file__))
-
-    # 1. Mount Dashboard Frontend
-    # 优先检查 dist 目录（生产环境/构建后）
     dashboard_dist_dir = os.path.join(current_dir, "dashboard", "frontend", "dist")
     dashboard_src_dir = os.path.join(current_dir, "dashboard", "frontend")
     
@@ -76,10 +63,8 @@ def create_app() -> FastAPI:
         dashboard_dir_to_mount = dashboard_dist_dir
         Log.i(TAG, f"Found Dashboard build artifacts. Mounting: {dashboard_dist_dir}")
     elif os.path.exists(dashboard_src_dir):
-        # 如果没有 dist，回退到源码目录（注意：源码目录现在依赖 npm 构建，直接挂载可能无法运行，除非是旧版 CDN 模式）
-        # 但为了稳健性，我们还是允许挂载，虽然可能因为缺少构建产物而报错
-        dashboard_dir_to_mount = dashboard_src_dir
-        Log.w(TAG, f"Dashboard build artifacts not found. Falling back to source: {dashboard_src_dir}")
+        Log.e(TAG,f"No frontend gist found! Please run npm run build in {dashboard_src_dir} first!")
+        sys.exit(1)
 
     if dashboard_dir_to_mount:
         @app.get("/dashboard", include_in_schema=False)
@@ -87,18 +72,12 @@ def create_app() -> FastAPI:
             return RedirectResponse(url="/dashboard/")
         
         app.mount("/dashboard", StaticFiles(directory=dashboard_dir_to_mount, html=True), name="dashboard_frontend")
-
-    # 2. Mount Themes Directory
-    # This allows accessing themes via /themes/default/index.html, /themes/dark/index.html, etc.
     themes_dir = os.path.join(current_dir, "newspaper", "frontend", "theme")
     if os.path.exists(themes_dir):
         app.mount("/themes", StaticFiles(directory=themes_dir, html=True), name="themes")
         Log.i(TAG, f"Themes directory mounted from {themes_dir}")
     else:
         Log.w(TAG, f"Themes directory not found at {themes_dir}")
-
-    # 3. Mount Root Frontend (The Loader)
-    # This serves the index.html that redirects to the active theme
     newspaper_frontend_dir = os.path.join(current_dir, "newspaper", "frontend")
     if os.path.exists(newspaper_frontend_dir):
         app.mount("/", StaticFiles(directory=newspaper_frontend_dir, html=True), name="newspaper_root")

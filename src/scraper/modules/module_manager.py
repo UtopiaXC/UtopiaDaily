@@ -68,28 +68,21 @@ class ModuleRunner(threading.Thread):
         self.is_crashed = False
         
         # Scheduling state
-        self.task_states = {} # { task_key: next_run_datetime }
-        self.task_crons = {}  # { task_key: cron_expression_string }
+        self.task_states = {}
+        self.task_crons = {}
 
     def _load_module(self):
         try:
             module_dir = os.path.dirname(self.module_path)
-            
-            # 1. Add local libs to sys.path if they exist
             libs_dir = os.path.join(module_dir, "libs")
             if os.path.exists(libs_dir) and libs_dir not in sys.path:
-                # Insert at the beginning to prioritize local libs
                 sys.path.insert(0, libs_dir)
                 Log.i(TAG, f"[{self.module_id}] Added local libs to path: {libs_dir}")
-
             if module_dir not in sys.path:
                 sys.path.insert(0, module_dir)
-
-            # Load module locales if exist
             locales_dir = os.path.join(module_dir, "locales")
             if os.path.exists(locales_dir):
                 i18n.load_module_locales(locales_dir)
-
             spec = importlib.util.spec_from_file_location(f"module_{self.module_id}", self.module_path)
             if spec is None:
                 raise ImportError(f"Could not load spec for {self.module_path}")
@@ -211,6 +204,7 @@ class ModuleManager:
     # ==========================================
     # Database Persistence (Mock)
     # ==========================================
+    # TODO: replace real db
     def _load_db(self):
         if os.path.exists(self.db_path):
             try:
@@ -274,9 +268,6 @@ class ModuleManager:
     def is_module_enabled(self, module_id):
         return self.db.get(module_id, {}).get("enabled", False)
 
-    # ==========================================
-    # Management Methods
-    # ==========================================
 
     def scan_modules(self):
         found_modules = {}
@@ -313,10 +304,6 @@ class ModuleManager:
             return False
         try:
             module_info = modules[module_id]
-            
-            # Note: We do NOT install requirements automatically here anymore.
-            # The module's enable_module() or test_module() should call context.install_requirements()
-
             spec = importlib.util.spec_from_file_location(f"setup_{module_id}", module_info["path"])
             module_lib = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module_lib)
@@ -357,7 +344,6 @@ class ModuleManager:
 
         Log.i(TAG, f"[{module_id}] Installing requirements from {requirements_file} to {libs_dir}...")
         try:
-            # pip install -r requirements.txt -t libs
             subprocess.check_call(
                 [sys.executable, "-m", "pip", "install", "-r", req_path, "-t", libs_dir],
                 stdout=subprocess.DEVNULL,
@@ -422,41 +408,27 @@ class ModuleManager:
                     Log.e(TAG, f"Error testing running module {module_id}", error=e)
                     return False, str(e)
 
-        # Fallback to temporary instantiation
         modules = self.scan_modules()
         if module_id not in modules:
             return False, "Module not found"
-            
         try:
             module_info = modules[module_id]
             module_path = module_info["path"]
             module_dir = os.path.dirname(module_path)
-            
-            # Note: We do NOT install requirements automatically here anymore.
-            # The module's test_module() should call context.install_requirements() if needed.
-
-            # Ensure module directory is in path for imports
             if module_dir not in sys.path:
                 sys.path.insert(0, module_dir)
-            
-            # Also add libs dir if it exists (in case they were installed previously)
             libs_dir = os.path.join(module_dir, "libs")
             if os.path.exists(libs_dir) and libs_dir not in sys.path:
                 sys.path.insert(0, libs_dir)
-
             spec = importlib.util.spec_from_file_location(f"test_{module_id}", module_path)
             if spec is None:
                 return False, f"Could not load spec for {module_path}"
-                
             module_lib = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module_lib)
-            
             if not hasattr(module_lib, 'create_module'):
                 return False, "Module missing 'create_module' factory function"
-
             ctx = ModuleContext(module_id, self)
             instance = module_lib.create_module(ctx)
-            
             if hasattr(instance, 'test_module'):
                 return instance.test_module()
             else:

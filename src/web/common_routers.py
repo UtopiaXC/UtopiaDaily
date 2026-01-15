@@ -53,12 +53,9 @@ async def get_available_locales():
         if os.path.exists(lang_file):
             with open(lang_file, 'r', encoding='utf-8') as f:
                 languages = json.load(f)
-                # Convert to list of dicts for frontend
                 return [{"label": label, "value": code} for code, label in languages.items()]
     except Exception as e:
         print(f"Error loading languages.json: {e}")
-    
-    # Fallback
     return [
         {"label": "Auto", "value": "auto"},
         {"label": "English", "value": "en_US"},

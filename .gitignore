@@ -3,6 +3,10 @@ test/
 /database/
 logs/
 
+# Frontend Build Artifacts & Dependencies
+src/web/dashboard/frontend/dist/
+src/web/dashboard/frontend/node_modules/
+
 ### Python template
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -239,6 +243,3 @@ com_crashlytics_export_strings.xml
 crashlytics.properties
 crashlytics-build.properties
 fabric.properties
-
-# Editor-based Rest Client
-.idea/httpRequests

@@ -1,19 +1,16 @@
 <template>
     <div class="relative inline-block text-left w-full" ref="dropdown">
-        <!-- Variant: Default (Bordered Input with Text) -->
         <button v-if="variant === 'default'" @click="toggle" type="button"
             class="flex items-center justify-between w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition shadow-sm text-gray-900 dark:text-white">
             <span class="block truncate mr-2">{{ selectedLabel }}</span>
             <span class="material-icons text-gray-400 dark:text-gray-300 text-sm">expand_more</span>
         </button>
 
-        <!-- Variant: Icon (Only Icon, for Login/Header) -->
         <button v-else-if="variant === 'icon'" @click="toggle" type="button"
             class="p-2 rounded-full text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition">
             <span class="material-icons">language</span>
         </button>
 
-        <!-- Dropdown Menu -->
         <div v-if="isOpen"
              :class="[
                 'absolute z-50 mt-1 bg-white dark:bg-gray-800 shadow-lg rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm',
@@ -47,7 +44,7 @@ export default {
         },
         variant: {
             type: String,
-            default: 'default' // 'default' or 'icon'
+            default: 'default'
         }
     },
     emits: ['update:modelValue'],

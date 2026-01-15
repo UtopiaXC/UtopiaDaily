@@ -48,7 +48,6 @@ async def update_config(key: str, update: ConfigUpdate, db: Session = Depends(ge
     if not config.is_editable:
         raise HTTPException(status_code=403, detail="This config is read-only")
 
-    # Input Validation
     new_value = update.value
     
     if config.type == "boolean":
@@ -60,9 +59,7 @@ async def update_config(key: str, update: ConfigUpdate, db: Session = Depends(ge
             raise HTTPException(status_code=400, detail="Invalid integer value")
             
     elif config.type == "select":
-        # If options are defined, validate against them
         if config.options:
-            # Options can be list of strings or list of dicts {label, value}
             valid_values = []
             for opt in config.options:
                 if isinstance(opt, dict):
@@ -75,8 +72,7 @@ async def update_config(key: str, update: ConfigUpdate, db: Session = Depends(ge
 
     config.value = new_value
     db.commit()
-    
-    # Hot Reload Logic
+
     if key == "log_level":
         Log.set_level(new_value)
 

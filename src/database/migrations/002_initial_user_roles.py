@@ -14,7 +14,7 @@ DEFAULT_ROLES = [
     {
         "name": "admin",
         "description": "Administrator",
-        "permissions": Permissions.get_default_admin() # List of all permissions
+        "permissions": Permissions.get_default_admin()
     },
     {
         "name": "user",
@@ -34,7 +34,6 @@ DEFAULT_ADMIN = {
 def upgrade():
     Log.i(TAG, "Starting upgrade...")
     with system_session_scope() as session:
-        # 1. Create Roles
         for role_data in DEFAULT_ROLES:
             existing = session.query(UserRole).filter_by(name=role_data["name"]).first()
             if not existing:
@@ -47,20 +46,13 @@ def upgrade():
                 session.add(new_role)
             else:
                 Log.i(TAG, f"Role {role_data['name']} already exists. Updating permissions.")
-                # Update permissions even if role exists (to sync with new code)
                 existing.permissions = role_data["permissions"]
-        
-        # Flush to ensure roles have IDs
         session.flush()
-
-        # 2. Create Default Admin
         admin_role = session.query(UserRole).filter_by(name=DEFAULT_ADMIN["role_name"]).first()
         if admin_role:
             existing_user = session.query(User).filter_by(username=DEFAULT_ADMIN["username"]).first()
             if not existing_user:
                 Log.i(TAG, f"Creating default admin user: {DEFAULT_ADMIN['username']}")
-                
-                # Simulate frontend MD5 hashing
                 raw_password = DEFAULT_ADMIN["password"]
                 md5_password = hashlib.md5(raw_password.encode()).hexdigest()
                 

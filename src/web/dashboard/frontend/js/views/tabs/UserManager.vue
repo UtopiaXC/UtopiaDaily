@@ -19,9 +19,7 @@
             </button>
         </div>
 
-        <!-- Content -->
         <div class="p-6 flex-1 overflow-y-auto">
-            <!-- Users Tab -->
             <div v-if="activeTab === 'users'">
                 <div class="flex justify-end mb-4">
                     <button @click="openUserModal()" class="bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700 transition flex items-center shadow-sm">
@@ -72,7 +70,6 @@
                 </div>
             </div>
 
-            <!-- Roles Tab -->
             <div v-else-if="activeTab === 'roles'">
                 <div class="flex justify-end mb-4">
                     <button @click="openRoleModal()" class="bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700 transition flex items-center shadow-sm">
@@ -100,7 +97,6 @@
             </div>
         </div>
 
-        <!-- User Modal -->
         <div v-if="showUserModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm">
             <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-96 max-w-full">
                 <h3 class="text-lg font-bold mb-4 text-gray-800 dark:text-white">{{ editingUser ? t('user_manager.edit_user') : t('user_manager.add_user') }}</h3>
@@ -141,7 +137,6 @@
             </div>
         </div>
 
-        <!-- Role Modal -->
         <div v-if="showRoleModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm">
             <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-[600px] max-w-full max-h-[90vh] flex flex-col">
                 <h3 class="text-lg font-bold mb-4 text-gray-800 dark:text-white">{{ editingRole ? t('user_manager.edit_role') : t('user_manager.add_role') }}</h3>
@@ -192,7 +187,6 @@
             </div>
         </div>
 
-        <!-- Confirm Modal -->
         <ConfirmModal
             :show="showConfirmModal"
             :title="confirmTitle"
@@ -202,7 +196,6 @@
             @cancel="showConfirmModal = false"
         />
 
-        <!-- Info Modal (New Password) -->
         <InfoModal
             :show="showInfoModal"
             :title="infoTitle"
