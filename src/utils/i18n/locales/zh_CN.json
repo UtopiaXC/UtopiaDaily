@@ -1,4 +1,46 @@
 {
     "config.system_version.desc": "当前系统版本",
-    "config.log_level.desc": "系统日志级别"
+    "config.log_level.desc": "系统日志级别",
+    "config.default_locale.desc": "系统默认语言",
+    "config.server_name.desc": "服务器名称 (显示在标题)",
+
+    "common.loading": "加载中...",
+    "common.save": "保存",
+    "common.saving": "保存中...",
+    "common.refresh": "刷新",
+    "common.logout": "退出登录",
+    "common.no_data": "暂无数据",
+    "common.saved_success": "配置保存成功",
+    "common.saved_failed": "保存配置失败：",
+    "common.cancel": "取消",
+    "common.verify": "验证",
+    "common.dashboard": "控制面板",
+
+    "login.username": "用户名",
+    "login.password": "密码",
+    "login.sign_in": "登录",
+    "login.signing_in": "登录中...",
+    "login.remember_me": "记住我",
+    "login.failed": "登录失败",
+    "login.input_required": "请输入用户名和密码",
+    "login.invalid_credentials": "用户名或密码错误",
+
+    "captcha.title": "安全检查",
+    "captcha.desc": "请完成验证以继续。",
+    "captcha.hint": "输入计算结果",
+    "captcha.required": "尝试次数过多，请验证身份。",
+    "captcha.invalid": "验证码错误，请重试。",
+
+    "menu.overview": "系统概览",
+    "menu.system_config": "系统配置",
+    "menu.user_manager": "用户管理",
+    "menu.schedule": "定时任务",
+    "menu.scraper_config": "抓取模组",
+    "menu.push_module_config": "推送模组",
+    "menu.frontend_config": "前端配置",
+    "menu.user_push_config": "个人推送设置",
+
+    "dashboard.api_status": "API 状态",
+    "dashboard.db_status": "数据库",
+    "dashboard.active_modules": "活跃模组"
 }

@@ -6,3 +6,5 @@ requests>=2.32.4
 beautifulsoup4>=4.12.3
 croniter>=2.0.1
 markdownify>=0.11.6
+PyJWT>=2.8.0
+Pillow>=10.2.0

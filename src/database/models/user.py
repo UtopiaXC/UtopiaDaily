@@ -35,6 +35,9 @@ class User(BaseModel):
     
     sessions = relationship("UserSession", back_populates="user", cascade="all, delete-orphan")
     logs = relationship("UserLog", back_populates="user")
+    
+    # 新增关联
+    push_config = relationship("UserPushConfig", back_populates="user", uselist=False, cascade="all, delete-orphan")
 
 class UserSession(BaseModel):
     """

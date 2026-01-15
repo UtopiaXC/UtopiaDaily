@@ -1,30 +1,57 @@
-import uuid
 import time
+import hashlib
 from sqlalchemy.orm import Session
-from src.database.models import User, UserSession, UserRole
+from src.database.models import User, UserSession, UserRole, UserLog
 from src.utils.security import crypto_manager
+from src.utils.security.jwt_util import create_access_token
 from src.web.dashboard.schemas import LoginRequest, LoginResponse, UserResponse
+from src.utils.security.captcha import verify_captcha
 
 class AuthService:
+    def _record_attempt(self, db: Session, ip_address: str, username: str, success: bool, user_id: str = None):
+        log = UserLog(
+            user_id=user_id,
+            action="LOGIN_SUCCESS" if success else "LOGIN_FAILED",
+            status="SUCCESS" if success else "FAILURE",
+            ip_address=ip_address,
+            details={"username": username}
+        )
+        db.add(log)
+        db.commit()
+
     def login(self, db: Session, request: LoginRequest, ip_address: str, user_agent: str) -> LoginResponse:
-        # 1. Find User
+        # 1. Mandatory Captcha Check
+        if not request.captcha_id or not request.captcha_code:
+            raise Exception("CAPTCHA_REQUIRED") 
+        
+        if not verify_captcha(request.captcha_id, request.captcha_code):
+            raise Exception("Invalid CAPTCHA")
+
+        # 2. Find User
         user = db.query(User).filter(User.username == request.username).first()
         if not user:
+            self._record_attempt(db, ip_address, request.username, False)
             return None
         
-        # 2. Verify Password
+        # 3. Verify Password
         if not crypto_manager.verify_password(request.password, user.password_hash):
+            self._record_attempt(db, ip_address, request.username, False, user.id)
             return None
             
         if not user.is_active:
+            self._record_attempt(db, ip_address, request.username, False, user.id)
             raise Exception("User is disabled")
 
-        # 3. Create Session Token
-        # Simple token generation (in production, use JWT or similar)
-        raw_token = str(uuid.uuid4())
-        token_hash = crypto_manager.get_password_hash(raw_token) # Hash token before storing
+        # Login Success
+        self._record_attempt(db, ip_address, request.username, True, user.id)
+
+        # 4. Create JWT Token
+        expire_minutes = 30 * 24 * 60 if request.remember_me else 24 * 60
+        access_token = create_access_token(data={"sub": user.id}, expires_delta=expire_minutes * 60)
         
-        expires_at = int(time.time() * 1000) + (24 * 60 * 60 * 1000) # 24 hours
+        # 5. Store Session Record
+        expires_at = int(time.time() * 1000) + (expire_minutes * 60 * 1000)
+        token_hash = hashlib.sha256(access_token.encode()).hexdigest()
         
         session = UserSession(
             user_id=user.id,
@@ -37,14 +64,11 @@ class AuthService:
         db.add(session)
         db.commit()
         
-        # 4. Construct Response
-        # Note: We return the raw_token to the user ONLY ONCE here.
-        # The DB only stores the hash.
-        
+        # 6. Construct Response
         role = db.query(UserRole).filter(UserRole.id == user.role_id).first()
         
         return LoginResponse(
-            token=f"{session.id}:{raw_token}", # Format: session_id:token
+            token=access_token,
             expires_at=expires_at,
             user=UserResponse(
                 id=user.id,

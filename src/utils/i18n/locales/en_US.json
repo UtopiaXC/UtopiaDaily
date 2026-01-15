@@ -1,4 +1,46 @@
 {
     "config.system_version.desc": "Current system version",
-    "config.log_level.desc": "System logging level"
+    "config.log_level.desc": "System logging level",
+    "config.default_locale.desc": "Default System Language",
+    "config.server_name.desc": "Server Name (Displayed in Title)",
+
+    "common.loading": "Loading...",
+    "common.save": "Save",
+    "common.saving": "Saving...",
+    "common.refresh": "Refresh",
+    "common.logout": "Logout",
+    "common.no_data": "No data available",
+    "common.saved_success": "Configuration saved successfully",
+    "common.saved_failed": "Failed to save configuration: ",
+    "common.cancel": "Cancel",
+    "common.verify": "Verify",
+    "common.dashboard": "Dashboard",
+
+    "login.username": "Username",
+    "login.password": "Password",
+    "login.sign_in": "Sign In",
+    "login.signing_in": "Signing In...",
+    "login.remember_me": "Remember me",
+    "login.failed": "Login failed",
+    "login.input_required": "Please enter username and password",
+    "login.invalid_credentials": "Invalid username or password",
+
+    "captcha.title": "Security Check",
+    "captcha.desc": "Please complete the verification to continue.",
+    "captcha.hint": "Enter result",
+    "captcha.required": "Too many attempts. Please verify you are human.",
+    "captcha.invalid": "Incorrect CAPTCHA. Please try again.",
+
+    "menu.overview": "Overview",
+    "menu.system_config": "System Config",
+    "menu.user_manager": "User Manager",
+    "menu.schedule": "Schedule",
+    "menu.scraper_config": "Scraper Modules",
+    "menu.push_module_config": "Push Modules",
+    "menu.frontend_config": "Frontend Config",
+    "menu.user_push_config": "My Push Settings",
+
+    "dashboard.api_status": "API Status",
+    "dashboard.db_status": "Database",
+    "dashboard.active_modules": "Active Modules"
 }

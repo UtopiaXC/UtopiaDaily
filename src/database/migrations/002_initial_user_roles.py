@@ -2,22 +2,30 @@ from src.database.connection import system_session_scope
 from src.database.models import UserRole, User
 from src.utils.logger.logger import Log
 from src.utils.security import crypto_manager
+from src.utils.constants.permissions import Permissions
 
 VERSION_CODE = 1
 DESCRIPTION = "Initialize default user roles and admin user"
 
 TAG = "MIGRATION_002"
 
+# Convert list of permissions to dict for JSON storage if needed, 
+# or just store list if model supports it. 
+# Based on AuthMiddleware logic: 
+# if isinstance(perms, dict): request.state.permissions = [k for k, v in perms.items() if v]
+# else: request.state.permissions = perms or []
+# So we can store a list directly.
+
 DEFAULT_ROLES = [
     {
         "name": "admin",
         "description": "System Administrator",
-        "permissions": {
-            "is_admin": True,
-            "can_manage_users": True,
-            "can_manage_modules": True,
-            "can_manage_system": True
-        }
+        "permissions": Permissions.get_default_admin() # List of all permissions
+    },
+    {
+        "name": "user",
+        "description": "Standard User",
+        "permissions": Permissions.get_default_user()
     }
 ]
 
@@ -43,7 +51,9 @@ def upgrade():
                 )
                 session.add(new_role)
             else:
-                Log.i(TAG, f"Role {role_data['name']} already exists. Skipping.")
+                Log.i(TAG, f"Role {role_data['name']} already exists. Updating permissions.")
+                # Update permissions even if role exists (to sync with new code)
+                existing.permissions = role_data["permissions"]
         
         # Flush to ensure roles have IDs
         session.flush()

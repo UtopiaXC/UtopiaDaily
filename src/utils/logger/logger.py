@@ -83,6 +83,9 @@ class VersionedFileHandler(logging.FileHandler):
 
 class Log:
     _logger = None
+    _console_handler = None
+    _sys_handler = None
+    
     @classmethod
     def _ensure_initialized(cls):
         if cls._logger is not None:
@@ -93,23 +96,28 @@ class Log:
             except Exception:
                 pass
         cls._logger = logging.getLogger("UtopiaDaily")
+        # Default to DEBUG initially, controlled by handlers
         cls._logger.setLevel(logging.DEBUG)
+        
         if cls._logger.hasHandlers():
             cls._logger.handlers.clear()
+            
         formatter = logging.Formatter(
             '[%(asctime)s] [%(levelname)s] [PID:%(process)d] %(message)s',
             datefmt='%Y-%m-%d %H:%M:%S'
         )
 
-        console_handler = logging.StreamHandler(sys.stdout)
-        console_handler.setLevel(logging.DEBUG)
-        console_handler.setFormatter(formatter)
-        cls._logger.addHandler(console_handler)
+        cls._console_handler = logging.StreamHandler(sys.stdout)
+        cls._console_handler.setLevel(logging.DEBUG)
+        cls._console_handler.setFormatter(formatter)
+        cls._logger.addHandler(cls._console_handler)
+        
         try:
-            sys_handler = VersionedFileHandler(LOG_DIR, "system", max_bytes=MAX_LOG_SIZE)
-            sys_handler.setLevel(logging.INFO)
-            sys_handler.setFormatter(formatter)
-            cls._logger.addHandler(sys_handler)
+            cls._sys_handler = VersionedFileHandler(LOG_DIR, "system", max_bytes=MAX_LOG_SIZE)
+            cls._sys_handler.setLevel(logging.INFO)
+            cls._sys_handler.setFormatter(formatter)
+            cls._logger.addHandler(cls._sys_handler)
+            
             error_log_file = os.path.join(LOG_DIR, "error.log")
             err_handler = logging.FileHandler(error_log_file, encoding='utf-8')
             err_handler.setLevel(logging.ERROR)
@@ -118,6 +126,38 @@ class Log:
 
         except Exception as e:
             print(f"Warning: Failed to setup log handlers: {e}")
+
+    @classmethod
+    def set_level(cls, level_str):
+        """
+        Dynamically sets the logging level.
+        :param level_str: "DEBUG", "INFO", "WARNING", "ERROR"
+        """
+        cls._ensure_initialized()
+        
+        level_map = {
+            "DEBUG": logging.DEBUG,
+            "INFO": logging.INFO,
+            "WARNING": logging.WARNING,
+            "ERROR": logging.ERROR
+        }
+        
+        level = level_map.get(level_str.upper(), logging.INFO)
+
+
+        cls.w("LOGGER", f"Log level will change to {level_str.upper()} "
+                        f"(Because of level modifying, successfully alert may not be print into logfile)")
+        
+        # Update Console Handler
+        if cls._console_handler:
+            cls._console_handler.setLevel(level)
+            
+        # Update System File Handler
+        if cls._sys_handler:
+            cls._sys_handler.setLevel(level)
+
+        cls.w("LOGGER", f"Log level changed to {level_str.upper()} successfully")
+
 
     @classmethod
     def get_logger(cls):
