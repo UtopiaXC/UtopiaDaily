@@ -2,47 +2,40 @@
   "telegram_channel_scraper": {
     "config": {
       "channels": {
-        "value": "https://t.me/s/tnews365,https://t.me/s/scitech_fans",
-        "description": "Telegram channel list (comma separated)",
-        "hint": "Public channels only",
-        "regular": ".*"
-      },
-      "lookback_days": {
-        "value": "3",
-        "description": "Lookback days",
-        "hint": "Integer",
-        "regular": "^\\d+$"
-      }
-    },
-    "tasks": {
-      "fetch_news": {
-        "cron": "0 8 * * *",
-        "description": "Fetch Telegram daily news"
-      }
-    },
-    "enabled": true
-  },
-  "telegram_channel_scraper1": {
-    "config": {
-      "channels": {
-        "value": "https://t.me/s/tnews365,https://t.me/s/scitech_fans",
+        "value": ["tnews365"],
+        "value_type": "array",
         "description": "module.telegram_channel.config.channels.desc",
-        "hint": "Public channels only",
+        "hint": "module.telegram_channel.config.channels.hint",
         "regular": ".*"
       },
       "lookback_days": {
         "value": "3",
+        "value_type": "int",
         "description": "module.telegram_channel.config.lookback.desc",
-        "hint": "Integer",
+        "hint": "module.telegram_channel.config.lookback.hint",
+        "regular": "^\\d+$"
+      },
+      "timezone": {
+        "value": "0",
+        "value_type": "int",
+        "description": "module.telegram_channel.config.timezone.desc",
+        "hint": "module.telegram_channel.config.timezone.hint",
+        "regular": "^\\d+$"
+      },
+      "max_pages": {
+        "value": "5",
+        "value_type": "int",
+        "description": "module.telegram_channel.config.max_pages.desc",
+        "hint": "module.telegram_channel.config.max_pages.hint",
         "regular": "^\\d+$"
       }
     },
     "tasks": {
       "fetch_news": {
-        "cron": "0 8 * * *",
+        "cron": "",
         "description": "module.telegram_channel.task.fetch_news.desc"
       }
     },
-    "enabled": false
+    "enabled": true
   }
 }

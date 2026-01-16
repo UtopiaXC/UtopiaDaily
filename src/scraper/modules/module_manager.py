@@ -23,8 +23,8 @@ class ModuleContext:
         self.module_id = module_id
         self._manager = manager
 
-    def set_module_config(self, key, description, value, force_init, hint, regular):
-        self._manager.db_set_config(self.module_id, key, description, value, force_init, hint, regular)
+    def set_module_config(self, key, description, value, value_type, force_init, hint, regular):
+        self._manager.db_set_config(self.module_id, key, description, value, value_type, force_init, hint, regular)
 
     def get_module_config(self, key):
         return self._manager.db_get_config(self.module_id, key)
@@ -32,17 +32,20 @@ class ModuleContext:
     def drop_module_config(self, key):
         self._manager.db_drop_config(self.module_id, key)
 
-    def set_module_schedule_task(self, key, description, cron, force_init, hint="", regular=""):
-        self._manager.db_set_task(self.module_id, key, description, cron, force_init, hint, regular)
+    def set_module_schedule_task(self, key, description, cron, force_init):
+        self._manager.db_set_task(self.module_id, key, description, cron, force_init)
 
     def get_module_schedule_task(self, key):
         return self._manager.db_get_task(self.module_id, key)
+
+    def drop_module_schedule_task(self, key):
+        self._manager.db_drop_task(self.module_id, key)
 
     def mark_message_tag(self, message):
         # TODO: Call actual AI tagging service
         return [{"tag": "news", "confidence": 0.9}]
 
-    def save_structured_results(self, value):
+    def save_structured_results(self, value, fingerprint=""):
         Log.i(TAG, f"[{self.module_id}] Data saved: {value.get('title', 'No Title')}")
         # TODO: Save to actual database
         return {"status": "success"}
@@ -228,12 +231,13 @@ class ModuleManager:
         if module_id not in self.db:
             self.db[module_id] = {"config": {}, "tasks": {}, "enabled": False}
 
-    def db_set_config(self, module_id, key, description, value, force_init, hint, regular):
+    def db_set_config(self, module_id, key, description, value, value_type, force_init, hint, regular):
         self._ensure_db_entry(module_id)
         config_store = self.db[module_id]["config"]
         if key not in config_store or force_init:
             config_store[key] = {
                 "value": value,
+                "value_type": value_type,
                 "description": description,
                 "hint": hint,
                 "regular": regular
@@ -250,7 +254,7 @@ class ModuleManager:
             del self.db[module_id]["config"][key]
             self._save_db()
 
-    def db_set_task(self, module_id, key, description, cron, force_init, hint, regular):
+    def db_set_task(self, module_id, key, description, cron, force_init):
         self._ensure_db_entry(module_id)
         task_store = self.db[module_id]["tasks"]
         if key not in task_store or force_init:
@@ -264,6 +268,11 @@ class ModuleManager:
         self._ensure_db_entry(module_id)
         task = self.db[module_id]["tasks"].get(key)
         return task["cron"] if task else None
+
+    def db_drop_task(self, module_id, key):
+        if module_id in self.db and key in self.db[module_id]["tasks"]:
+            del self.db[module_id]["tasks"][key]
+            self._save_db()
 
     def db_get_all_tasks(self, module_id):
         self._ensure_db_entry(module_id)
@@ -284,7 +293,7 @@ class ModuleManager:
             if not path or not os.path.exists(path): continue
             
             for folder_name in os.listdir(path):
-                module_path = os.path.join(path, folder_name, "api.py")
+                module_path = os.path.join(path, folder_name, "controller.py")
                 if os.path.isfile(module_path):
                     # Use folder name as temporary ID until meta is read
                     temp_id = folder_name

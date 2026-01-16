@@ -16,11 +16,11 @@ class BaseModule(ABC):
     # Execute Interface (System API)
     # ==========================================
 
-    def set_module_config(self, key: str, description: str, value: str, force_init: bool = False, hint: str = "", regular: str = ""):
+    def set_module_config(self, key: str, description: str, value: str, value_type: str = "string", force_init: bool = False, hint: str = "", regular: str = ""):
         """
         Set module configuration parameter.
         """
-        return self._context.set_module_config(key, description, value, force_init, hint, regular)
+        return self._context.set_module_config(key, description, value, value_type, force_init, hint, regular)
 
     def get_module_config(self, key: str) -> str:
         """
@@ -34,11 +34,11 @@ class BaseModule(ABC):
         """
         return self._context.drop_module_config(key)
 
-    def set_module_schedule_task(self, key: str, description: str, cron: str, force_init: bool = False, hint: str = "", regular: str = ""):
+    def set_module_schedule_task(self, key: str, description: str, cron: str = "", force_init: bool = False):
         """
         Set a scheduled task for the module.
         """
-        return self._context.set_module_schedule_task(key, description, cron, force_init, hint, regular)
+        return self._context.set_module_schedule_task(key, description, cron, force_init)
 
     def get_module_schedule_task(self, key: str):
         """
@@ -46,17 +46,23 @@ class BaseModule(ABC):
         """
         return self._context.get_module_schedule_task(key)
 
+    def drop_module_schedule_task(self, key: str):
+        """
+        Delete a scheduled task.
+        """
+        return self._context.drop_module_schedule_task(key)
+
     def mark_message_tag(self, message: str) -> List[Dict[str, Any]]:
         """
         Get tags for a message using system's tagging model.
         """
         return self._context.mark_message_tag(message)
 
-    def save_structured_results(self, value: Any) -> Dict[str, Any]:
+    def save_structured_results(self, value: Any, fingerprint: str = "") -> Dict[str, Any]:
         """
         Save structured results to the database.
         """
-        return self._context.save_structured_results(value)
+        return self._context.save_structured_results(value, fingerprint)
 
     # ==========================================
     # Listener Interface (To be implemented)
