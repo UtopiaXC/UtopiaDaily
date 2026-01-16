@@ -104,7 +104,7 @@
                 <form @submit.prevent="saveUser">
                     <div class="mb-4">
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('login.username') }}</label>
-                        <input v-model="userForm.username" :disabled="!!editingUser" type="text" class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm bg-white dark:bg-gray-700 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed">
+                        <input v-model="userForm.username" type="text" class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm bg-white dark:bg-gray-700 dark:text-white">
                     </div>
                     <div class="mb-4">
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('login.nickname') }}</label>
@@ -145,7 +145,7 @@
                     <form @submit.prevent="saveRole" id="roleForm">
                         <div class="mb-4">
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('user_manager.role_name') }}</label>
-                            <input v-model="roleForm.name" type="text" class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm bg-white dark:bg-gray-700 dark:text-white">
+                            <input v-model="roleForm.name" :disabled="roleForm.name === 'admin'" type="text" class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm bg-white dark:bg-gray-700 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed">
                         </div>
                         <div class="mb-4">
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('user_manager.role_desc') }}</label>
@@ -360,7 +360,10 @@ export default {
                 }
 
                 if (this.editingUser) {
-                    delete payload.username; // Cannot change username
+                    // Allow username update if changed
+                    if (payload.username === this.editingUser.username) {
+                        delete payload.username;
+                    }
                     await http.put(`/api/dashboard/user-manager/users/${this.editingUser.id}`, payload);
                     this.showToast(this.t('common.saved_success'), 'success');
                 } else {

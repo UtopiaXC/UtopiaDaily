@@ -43,10 +43,10 @@
         <div class="p-4 border-t border-gray-800 dark:border-gray-900 bg-gray-900 dark:bg-gray-950">
             <div class="flex items-center mb-4" :class="{'justify-center': isCollapsed}">
                 <div class="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-sm font-bold shadow-md ring-2 ring-gray-800 flex-shrink-0">
-                    {{ user.username.charAt(0).toUpperCase() }}
+                    {{ (user.nickname || user.username).charAt(0).toUpperCase() }}
                 </div>
                 <div v-if="!isCollapsed" class="ml-3 overflow-hidden">
-                    <p class="text-sm font-medium text-white truncate">{{ user.username }}</p>
+                    <p class="text-sm font-medium text-white truncate">{{ user.nickname || user.username }}</p>
                     <p class="text-xs text-gray-400 truncate">{{ user.role_name }}</p>
                 </div>
             </div>

@@ -1,6 +1,7 @@
 import time
 import hashlib
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 from src.database.models import User, UserSession, UserRole, UserLog
 from src.utils.security import crypto_manager
 from src.utils.security.jwt_util import create_access_token
@@ -25,7 +26,14 @@ class AuthService:
         if not verify_captcha(request.captcha_id, request.captcha_code):
             raise Exception("Invalid CAPTCHA")
 
-        user = db.query(User).filter(User.username == request.username).first()
+        # Support login by username or email
+        user = db.query(User).filter(
+            or_(
+                User.username == request.username,
+                User.email == request.username
+            )
+        ).first()
+
         if not user:
             self._record_attempt(db, ip_address, request.username, False)
             return None
@@ -64,6 +72,7 @@ class AuthService:
             user=UserResponse(
                 id=user.id,
                 username=user.username,
+                nickname=user.nickname,
                 email=user.email,
                 role_name=role.name if role else "unknown",
                 permissions=role.permissions if role else {}

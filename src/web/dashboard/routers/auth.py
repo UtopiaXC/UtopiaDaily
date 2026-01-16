@@ -2,11 +2,13 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from src.database.connection import system_db_manager
-from src.web.dashboard.schemas import LoginRequest, LoginResponse
+from src.database.models import User, UserRole
+from src.web.dashboard.schemas import LoginRequest, LoginResponse, UserResponse
 from src.web.dashboard.services.auth_service import AuthService
 from src.utils.security.captcha import generate_captcha
 from src.utils.logger.logger import Log
 from src.utils.i18n import i18n
+from src.web.dependencies import get_current_user
 
 router = APIRouter(prefix="/api/dashboard/auth", tags=["Dashboard Authentication"])
 auth_service = AuthService()
@@ -65,3 +67,30 @@ async def login(request: LoginRequest, req: Request, db: Session = Depends(get_d
         Log.e("DASHBOARD_AUTH", "Login error", error=e)
         detail = i18n.t("login.failed", locale=locale)
         raise HTTPException(status_code=500, detail=detail)
+
+@router.get("/me", response_model=UserResponse)
+async def get_current_user_info(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """
+    Get current logged-in user info.
+    """
+    # Refresh user from DB to get latest data (though get_current_user already does a query)
+    # get_current_user returns a User model instance attached to the session used in AuthMiddleware?
+    # No, AuthMiddleware uses a separate session which is closed.
+    # So 'user' is detached.
+    # We can just return it, but to be safe and get role name, let's query again or use the object if lazy loading works (it won't on detached).
+    
+    # Re-query to ensure attached session and latest data
+    current_user = db.query(User).filter(User.id == user.id).first()
+    if not current_user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    role = db.query(UserRole).filter(UserRole.id == current_user.role_id).first()
+    
+    return UserResponse(
+        id=current_user.id,
+        username=current_user.username,
+        nickname=current_user.nickname,
+        email=current_user.email,
+        role_name=role.name if role else "unknown",
+        permissions=role.permissions if role else {}
+    )

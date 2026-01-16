@@ -50,6 +50,7 @@ class UserCreate(UserBase):
     password: str
 
 class UserUpdate(BaseModel):
+    username: Optional[str] = None
     nickname: Optional[str] = None
     email: Optional[str] = None
     is_active: Optional[bool] = None
@@ -107,7 +108,8 @@ def check_last_admin(db: Session, target_user_id: str):
 def validate_username(username: str):
     if len(username) < 3:
         return False
-    if not re.match(r'^[a-zA-Z0-9_\-\.@]+$', username):
+    # Disallow '@' to prevent confusion with email login
+    if not re.match(r'^[a-zA-Z0-9_\-\.]+$', username):
         return False
     return True
 
@@ -151,19 +153,26 @@ async def create_role(role: RoleCreate, db: Session = Depends(get_db)):
     return RoleResponse(id=new_role.id, name=new_role.name, description=new_role.description, permissions=new_role.permissions, user_count=0)
 
 @router.put("/roles/{role_id}", response_model=RoleResponse)
-async def update_role(role_id: str, update: RoleUpdate, db: Session = Depends(get_db)):
+async def update_role(role_id: str, update: RoleUpdate, req: Request, db: Session = Depends(get_db)):
+    locale = get_locale(req)
     role = db.query(UserRole).filter(UserRole.id == role_id).first()
     if not role:
         raise HTTPException(status_code=404, detail="Role not found")
     
-    if update.name != role.name:
-        if db.query(UserRole).filter(UserRole.name == update.name).first():
-            raise HTTPException(status_code=400, detail="Role name already exists")
-
+    # Admin Role Protection
     if role.name == "admin":
+        if update.name != "admin":
+            detail = i18n.t("user_manager.admin_readonly", locale=locale)
+            raise HTTPException(status_code=400, detail=detail)
+        
+        # Ensure permissions are not changed (or reset to full)
         all_perms = Permissions.get_all()
         update.permissions = {p: True for p in all_perms}
-    
+    else:
+        if update.name != role.name:
+            if db.query(UserRole).filter(UserRole.name == update.name).first():
+                raise HTTPException(status_code=400, detail="Role name already exists")
+
     role.name = update.name
     role.description = update.description
     role.permissions = update.permissions
@@ -277,6 +286,15 @@ async def update_user(user_id: str, update: UserUpdate, req: Request, db: Sessio
         if check_last_admin(db, user_id):
             detail = i18n.t("user_manager.error_last_admin_deactivate", locale=locale)
             raise HTTPException(status_code=400, detail=detail)
+
+    if update.username is not None and update.username != user.username:
+        if not validate_username(update.username):
+            detail = i18n.t("login.username_invalid", locale=locale)
+            raise HTTPException(status_code=400, detail=detail)
+        if db.query(User).filter(User.username == update.username).first():
+            detail = i18n.t("login.username_exists", locale=locale)
+            raise HTTPException(status_code=400, detail=detail)
+        user.username = update.username
 
     if update.nickname is not None:
         user.nickname = update.nickname

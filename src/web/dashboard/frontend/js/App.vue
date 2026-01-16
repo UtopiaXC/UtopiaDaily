@@ -109,6 +109,7 @@ export default {
             this.token = storedToken;
             this.user = JSON.parse(storedUser);
             this.fetchMenu();
+            this.fetchCurrentUser();
         }
 
         this.updatePageTitle();
@@ -177,6 +178,15 @@ export default {
                 this.menu = res.data.menu;
             } catch (err) {
                 console.error("Failed to fetch menu", err);
+            }
+        },
+        async fetchCurrentUser() {
+            try {
+                const res = await http.get('/api/dashboard/auth/me');
+                this.user = res.data;
+                localStorage.setItem('user', JSON.stringify(this.user));
+            } catch (err) {
+                console.error("Failed to fetch current user", err);
             }
         },
         handleLoginSuccess(data) {

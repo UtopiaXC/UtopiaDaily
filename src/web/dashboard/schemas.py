@@ -11,6 +11,7 @@ class LoginRequest(BaseModel):
 class UserResponse(BaseModel):
     id: str
     username: str
+    nickname: Optional[str] = None
     email: Optional[str]
     role_name: str
     permissions: Union[List[str], Dict[str, Any]]
