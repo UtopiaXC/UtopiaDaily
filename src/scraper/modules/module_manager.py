@@ -12,6 +12,8 @@ from croniter import croniter
 
 from src.utils.logger.logger import Log
 from src.utils.i18n import i18n
+from src.database.connection import system_session_scope
+from src.database.models import ScraperModule
 
 TAG = "MODULE_MANAGER"
 DB_FILE = "modules_db.json"
@@ -80,9 +82,9 @@ class ModuleRunner(threading.Thread):
                 Log.i(TAG, f"[{self.module_id}] Added local libs to path: {libs_dir}")
             if module_dir not in sys.path:
                 sys.path.insert(0, module_dir)
-            locales_dir = os.path.join(module_dir, "locales")
-            if os.path.exists(locales_dir):
-                i18n.load_module_locales(locales_dir)
+            
+            # Locales are now loaded globally by ModuleManager
+            
             spec = importlib.util.spec_from_file_location(f"module_{self.module_id}", self.module_path)
             if spec is None:
                 raise ImportError(f"Could not load spec for {self.module_path}")
@@ -200,6 +202,8 @@ class ModuleManager:
         self.runners: Dict[str, ModuleRunner] = {}
         
         self._load_db()
+        self.reload_modules()
+        self._load_all_module_locales()
 
     # ==========================================
     # Database Persistence (Mock)
@@ -266,18 +270,38 @@ class ModuleManager:
         return self.db[module_id]["tasks"]
     
     def is_module_enabled(self, module_id):
-        return self.db.get(module_id, {}).get("enabled", False)
-
+        with system_session_scope() as session:
+            module = session.query(ScraperModule).filter_by(module_id=module_id).first()
+            return module.is_enable if module else False
 
     def scan_modules(self):
         found_modules = {}
-        for source_type, path in self.dirs.items():
-            if not os.path.exists(path): continue
+        # Define scan order: default first, then external
+        scan_order = ["default", "external"]
+        
+        for source_type in scan_order:
+            path = self.dirs.get(source_type)
+            if not path or not os.path.exists(path): continue
+            
             for folder_name in os.listdir(path):
                 module_path = os.path.join(path, folder_name, "api.py")
                 if os.path.isfile(module_path):
-                    module_id = folder_name
-                    meta = self._read_module_meta(module_path, module_id)
+                    # Use folder name as temporary ID until meta is read
+                    temp_id = folder_name
+                    meta = self._read_module_meta(module_path, temp_id)
+                    
+                    # Validate Meta
+                    if not meta or "id" not in meta or "name" not in meta or "version" not in meta:
+                        Log.w(TAG, f"Skipping invalid module at {module_path}: Missing required meta fields (id, name, version)")
+                        continue
+                    
+                    module_id = meta["id"]
+                    
+                    # Check if module ID already exists (from previous source)
+                    if module_id in found_modules:
+                        Log.w(TAG, f"Duplicate module ID '{module_id}' found in {source_type}. Ignoring {module_path}. Keeping version from {found_modules[module_id]['source']}.")
+                        continue
+
                     found_modules[module_id] = {
                         "path": module_path,
                         "source": source_type,
@@ -296,12 +320,95 @@ class ModuleManager:
             Log.w(TAG, f"Failed to read meta for {module_id}: {e}")
         return {}
 
+    def _load_all_module_locales(self):
+        Log.i(TAG, "Loading all module locales...")
+        scanned_modules = self.scan_modules()
+        for module_id, info in scanned_modules.items():
+            module_dir = os.path.dirname(info["path"])
+            locales_dir = os.path.join(module_dir, "locales")
+            if os.path.exists(locales_dir):
+                i18n.load_module_locales(locales_dir)
+
+    def reload_modules(self):
+        """
+        Scans modules and updates the database.
+        Handles duplicates by keeping the first loaded one.
+        Marks missing modules as deleted.
+        """
+        Log.i(TAG, "Reloading modules...")
+        scanned_modules = self.scan_modules()
+        
+        with system_session_scope() as session:
+            # Get existing modules
+            existing_modules = {m.module_id: m for m in session.query(ScraperModule).all()}
+            
+            # 1. Update or Create scanned modules
+            for module_id, info in scanned_modules.items():
+                meta = info["meta"]
+                source = info["source"]
+                
+                if module_id in existing_modules:
+                    # Update existing module
+                    module = existing_modules[module_id]
+                    module.name = meta["name"]
+                    module.description = meta.get("description")
+                    module.version = meta["version"]
+                    module.author = meta.get("author")
+                    module.meta = meta
+                    module.source = source
+                    
+                    if module.is_deleted:
+                        Log.i(TAG, f"Restoring deleted module: {module_id}")
+                        module.is_deleted = False
+                        # Keep is_enable as False for safety when restoring
+                        module.is_enable = False
+                    
+                    Log.i(TAG, f"Updated module: {module_id}")
+                else:
+                    # Create new module
+                    # Check if module_id already exists in DB (handled by existing_modules check above, but double check for safety)
+                    existing = session.query(ScraperModule).filter_by(module_id=module_id).first()
+                    if existing:
+                        Log.e(TAG, f"Duplicate module ID detected during sync: {module_id}. Skipping {info['path']}")
+                        continue
+
+                    new_module = ScraperModule(
+                        module_id=module_id,
+                        name=meta["name"],
+                        description=meta.get("description"),
+                        version=meta["version"],
+                        author=meta.get("author"),
+                        meta=meta,
+                        source=source,
+                        is_enable=False # Default to disabled
+                    )
+                    session.add(new_module)
+                    Log.i(TAG, f"Registered new module: {module_id}")
+
+            # 2. Mark missing modules as deleted
+            for module_id, module in existing_modules.items():
+                if module_id not in scanned_modules and not module.is_deleted:
+                    Log.w(TAG, f"Module {module_id} not found on disk. Marking as deleted.")
+                    module.is_deleted = True
+                    module.is_enable = False
+                    self.disable_module(module_id) # Stop if running
+        
+        # Reload locales after DB sync
+        self._load_all_module_locales()
+
     def enable_module(self, module_id):
         Log.i(TAG, f"Enabling module: {module_id}")
         modules = self.scan_modules()
         if module_id not in modules:
-            Log.e(TAG, f"Module {module_id} not found")
+            Log.e(TAG, f"Module {module_id} not found on disk")
             return False
+        
+        # Test module first
+        success, message = self.test_module(module_id)
+        if not success:
+            Log.w(TAG, f"Module {module_id} failed pre-enable test: {message}")
+            raise Exception(f"Module test failed: {message}")
+
         try:
             module_info = modules[module_id]
             spec = importlib.util.spec_from_file_location(f"setup_{module_id}", module_info["path"])
@@ -312,9 +419,14 @@ class ModuleManager:
             instance = module_lib.create_module(ctx)
             
             if instance.enable_module():
-                self._ensure_db_entry(module_id)
-                self.db[module_id]["enabled"] = True
-                self._save_db()
+                with system_session_scope() as session:
+                    module = session.query(ScraperModule).filter_by(module_id=module_id).first()
+                    if module:
+                        module.is_enable = True
+                        self._ensure_db_entry(module_id)
+                        self.db[module_id]["enabled"] = True
+                        self._save_db()
+                
                 self.start_module(module_id)
                 return True
             else:
@@ -377,6 +489,11 @@ class ModuleManager:
             runner.stop()
             runner.join(timeout=5)
             del self.runners[module_id]
+
+        with system_session_scope() as session:
+            module = session.query(ScraperModule).filter_by(module_id=module_id).first()
+            if module:
+                module.is_enable = False
 
         if module_id in self.db:
             self.db[module_id]["enabled"] = False

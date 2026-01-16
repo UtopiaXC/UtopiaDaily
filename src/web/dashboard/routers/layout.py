@@ -23,7 +23,7 @@ async def get_menu(request: Request, user = Depends(get_current_user)):
         menu.append({"id": "schedule", "label": "Schedule", "icon": "schedule"})
 
     if Permissions.SCRAPER_VIEW in user_perms:
-        menu.append({"id": "scraper_config", "label": "Scraper Modules", "icon": "extension"})
+        menu.append({"id": "scraper_modules", "label": "Scraper Modules", "icon": "extension"})
 
     if Permissions.PUSH_MODULE_VIEW in user_perms:
         menu.append({"id": "push_module_config", "label": "Push Modules", "icon": "send"})

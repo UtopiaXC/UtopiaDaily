@@ -2,7 +2,7 @@ import importlib
 import os
 from sqlalchemy import inspect
 from src.database.connection import system_db_manager, system_session_scope, Base
-from src.database.models import MigrationVersion, SystemConfig, User, UserRole, UserSession, UserLog, UserPushConfig
+from src.database.models import MigrationVersion, SystemConfig, User, UserRole, UserSession, UserLog, UserPushConfig, ScraperModule
 from src.utils.logger.logger import Log
 
 TAG = "MIGRATION_MANAGER"
@@ -24,7 +24,8 @@ class MigrationManager:
             User,
             UserSession,
             UserLog,
-            UserPushConfig
+            UserPushConfig,
+            ScraperModule
         ]
 
         for model in tables_to_create:

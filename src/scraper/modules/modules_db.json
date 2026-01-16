@@ -1,5 +1,5 @@
 {
-  "telegram_channel": {
+  "telegram_channel_scraper": {
     "config": {
       "channels": {
         "value": "https://t.me/s/tnews365,https://t.me/s/scitech_fans",
@@ -16,10 +16,33 @@
     },
     "tasks": {
       "fetch_news": {
-        "cron": "8 20 * * *",
+        "cron": "0 8 * * *",
         "description": "Fetch Telegram daily news"
       }
     },
     "enabled": true
+  },
+  "telegram_channel_scraper1": {
+    "config": {
+      "channels": {
+        "value": "https://t.me/s/tnews365,https://t.me/s/scitech_fans",
+        "description": "module.telegram_channel.config.channels.desc",
+        "hint": "Public channels only",
+        "regular": ".*"
+      },
+      "lookback_days": {
+        "value": "3",
+        "description": "module.telegram_channel.config.lookback.desc",
+        "hint": "Integer",
+        "regular": "^\\d+$"
+      }
+    },
+    "tasks": {
+      "fetch_news": {
+        "cron": "0 8 * * *",
+        "description": "module.telegram_channel.task.fetch_news.desc"
+      }
+    },
+    "enabled": false
   }
 }

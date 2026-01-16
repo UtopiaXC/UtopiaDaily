@@ -4,8 +4,6 @@ from typing import List, Optional
 from pydantic import BaseModel
 from src.database.connection import system_db_manager
 from src.database.models import SystemConfig
-from src.web.dependencies import RequirePermission
-from src.utils.constants.permissions import Permissions
 from src.utils.logger.logger import Log
 
 router = APIRouter(prefix="/api/dashboard/system-config", tags=["System Config"])
@@ -31,7 +29,7 @@ def get_db():
     finally:
         db.close()
 
-@router.get("/", response_model=List[ConfigItem], dependencies=[Depends(RequirePermission(Permissions.SYSTEM_CONFIG_VIEW))])
+@router.get("/", response_model=List[ConfigItem])
 async def get_configs(group: Optional[str] = None, db: Session = Depends(get_db)):
     query = db.query(SystemConfig)
     if group:
@@ -39,7 +37,7 @@ async def get_configs(group: Optional[str] = None, db: Session = Depends(get_db)
     query = query.order_by(SystemConfig.order.asc())
     return query.all()
 
-@router.put("/{key}", dependencies=[Depends(RequirePermission(Permissions.SYSTEM_CONFIG_EDIT))])
+@router.put("/{key}")
 async def update_config(key: str, update: ConfigUpdate, db: Session = Depends(get_db)):
     config = db.query(SystemConfig).filter(SystemConfig.key == key).first()
     if not config:

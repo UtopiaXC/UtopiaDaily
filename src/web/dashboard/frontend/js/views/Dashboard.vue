@@ -1,15 +1,27 @@
 <template>
     <div class="flex h-screen overflow-hidden bg-gray-100 dark:bg-gray-900 transition-colors duration-200">
+        <!-- Mobile Sidebar Overlay -->
+        <div
+            v-if="isSidebarOpen"
+            class="fixed inset-0 bg-black bg-opacity-50 z-20 md:hidden"
+            @click="isSidebarOpen = false"
+        ></div>
+
         <Sidebar
             :server-name="serverName"
             :user="user"
             :menu="menu"
             :current-tab="currentTab"
             :t="t"
+            :is-open="isSidebarOpen"
+            :is-collapsed="isSidebarCollapsed"
             @update:tab="updateTab"
             @logout="$emit('logout')"
+            @toggle-collapse="toggleSidebar"
+            @close-mobile="isSidebarOpen = false"
         />
-        <div class="flex-1 flex flex-col overflow-hidden">
+
+        <div class="flex-1 flex flex-col overflow-hidden transition-all duration-300">
             <Header
                 :current-tab-label="currentTabLabel"
                 :is-dark-mode="isDarkMode"
@@ -17,8 +29,9 @@
                 :ui-locale-options="uiLocaleOptions"
                 @toggle-dark-mode="$emit('toggle-dark-mode')"
                 @update:locale="$emit('update:locale', $event)"
+                @toggle-sidebar="toggleSidebar"
             />
-            <main class="flex-1 overflow-x-hidden overflow-y-auto p-8 bg-gray-100 dark:bg-gray-900 transition-colors duration-200">
+            <main class="flex-1 overflow-x-hidden overflow-y-auto p-4 md:p-8 bg-gray-100 dark:bg-gray-900 transition-colors duration-200">
                 <component :is="currentTabComponent" :t="t" :all-locales="allLocales" :current-user="user" />
             </main>
         </div>
@@ -31,9 +44,10 @@ import Header from '../layout/Header.vue';
 import Overview from './tabs/Overview.vue';
 import SystemConfig from './tabs/SystemConfig.vue';
 import UserManager from './tabs/UserManager.vue';
+import ScraperModules from './tabs/ScraperModules.vue';
 
 export default {
-    components: { Sidebar, Header, Overview, SystemConfig, UserManager },
+    components: { Sidebar, Header, Overview, SystemConfig, UserManager, ScraperModules },
     props: {
         serverName: String,
         user: Object,
@@ -47,8 +61,17 @@ export default {
     emits: ['logout', 'toggle-dark-mode', 'update:locale'],
     data() {
         return {
-            currentTab: 'dashboard'
+            currentTab: 'dashboard',
+            isSidebarOpen: false,
+            isSidebarCollapsed: false
         }
+    },
+    created() {
+        this.checkScreenSize();
+        window.addEventListener('resize', this.checkScreenSize);
+    },
+    unmounted() {
+        window.removeEventListener('resize', this.checkScreenSize);
     },
     computed: {
         currentTabLabel() {
@@ -61,6 +84,7 @@ export default {
                 case 'dashboard': return 'Overview';
                 case 'system_config': return 'SystemConfig';
                 case 'user_manager': return 'UserManager';
+                case 'scraper_modules': return 'ScraperModules';
                 default: return {
                     props: ['t'],
                     template: `
@@ -85,6 +109,27 @@ export default {
     methods: {
         updateTab(tab) {
             this.currentTab = tab;
+            // Close sidebar on mobile after selection
+            if (window.innerWidth < 768) {
+                this.isSidebarOpen = false;
+            }
+        },
+        toggleSidebar() {
+            if (window.innerWidth < 768) {
+                this.isSidebarOpen = !this.isSidebarOpen;
+            } else {
+                this.isSidebarCollapsed = !this.isSidebarCollapsed;
+            }
+        },
+        checkScreenSize() {
+            if (window.innerWidth < 1024 && window.innerWidth >= 768) {
+                this.isSidebarCollapsed = true;
+            } else if (window.innerWidth >= 1024) {
+                this.isSidebarCollapsed = false;
+            }
+            if (window.innerWidth >= 768) {
+                this.isSidebarOpen = false;
+            }
         }
     }
 }

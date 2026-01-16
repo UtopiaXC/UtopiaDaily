@@ -1,6 +1,11 @@
 {
-    "module.telegram.desc": "Scrapes public Telegram channels for news and updates.",
-    "module.telegram.config.channels.desc": "Telegram channel list (comma separated)",
-    "module.telegram.config.lookback.desc": "Look back days",
-    "module.telegram.task.fetch_news.desc": "Fetch Telegram daily news"
+    "module.telegram_channel.name": "Telegram Public Channel Scraper",
+    "module.telegram_channel.description": "This module scrapes public Telegram channels for news and updates by web version",
+    "module.telegram_channel.config.channels.desc": "Telegram channel list (comma separated)",
+    "module.telegram_channel.config.lookback.desc": "Look back days",
+    "module.telegram_channel.task.fetch_news.desc": "Fetch Telegram daily news",
+    "module.telegram_channel.test.no_channels": "No channels configured",
+    "module.telegram_channel.test.success": "Connection test successful",
+    "module.telegram_channel.test.failed": "Connection test failed",
+    "module.telegram_channel.test.error": "Error during test"
 }

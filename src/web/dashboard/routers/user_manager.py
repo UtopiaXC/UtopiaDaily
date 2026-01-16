@@ -8,7 +8,6 @@ import hashlib
 import re
 from src.database.connection import system_db_manager
 from src.database.models import User, UserRole, UserSession
-from src.web.dependencies import RequirePermission
 from src.utils.constants.permissions import Permissions
 from src.utils.security import crypto_manager
 from src.utils.i18n import i18n
@@ -112,12 +111,12 @@ def validate_username(username: str):
         return False
     return True
 
-@router.get("/permissions", dependencies=[Depends(RequirePermission(Permissions.USER_MANAGER_VIEW))])
+@router.get("/permissions")
 async def get_all_permissions():
     """Return all available permission nodes in the system."""
     return Permissions.get_all()
 
-@router.get("/roles", response_model=List[RoleResponse], dependencies=[Depends(RequirePermission(Permissions.USER_MANAGER_VIEW))])
+@router.get("/roles", response_model=List[RoleResponse])
 async def get_roles(db: Session = Depends(get_db)):
     roles = db.query(UserRole).all()
     result = []
@@ -136,7 +135,7 @@ async def get_roles(db: Session = Depends(get_db)):
         result.append(role_dict)
     return result
 
-@router.post("/roles", response_model=RoleResponse, dependencies=[Depends(RequirePermission(Permissions.USER_MANAGER_EDIT))])
+@router.post("/roles", response_model=RoleResponse)
 async def create_role(role: RoleCreate, db: Session = Depends(get_db)):
     if db.query(UserRole).filter(UserRole.name == role.name).first():
         raise HTTPException(status_code=400, detail="Role name already exists")
@@ -151,7 +150,7 @@ async def create_role(role: RoleCreate, db: Session = Depends(get_db)):
     db.refresh(new_role)
     return RoleResponse(id=new_role.id, name=new_role.name, description=new_role.description, permissions=new_role.permissions, user_count=0)
 
-@router.put("/roles/{role_id}", response_model=RoleResponse, dependencies=[Depends(RequirePermission(Permissions.USER_MANAGER_EDIT))])
+@router.put("/roles/{role_id}", response_model=RoleResponse)
 async def update_role(role_id: str, update: RoleUpdate, db: Session = Depends(get_db)):
     role = db.query(UserRole).filter(UserRole.id == role_id).first()
     if not role:
@@ -175,7 +174,7 @@ async def update_role(role_id: str, update: RoleUpdate, db: Session = Depends(ge
     count = db.query(User).filter(User.role_id == role.id).count()
     return RoleResponse(id=role.id, name=role.name, description=role.description, permissions=role.permissions, user_count=count)
 
-@router.delete("/roles/{role_id}", dependencies=[Depends(RequirePermission(Permissions.USER_MANAGER_EDIT))])
+@router.delete("/roles/{role_id}")
 async def delete_role(role_id: str, req: Request, db: Session = Depends(get_db)):
     locale = get_locale(req)
     role = db.query(UserRole).filter(UserRole.id == role_id).first()
@@ -197,7 +196,7 @@ async def delete_role(role_id: str, req: Request, db: Session = Depends(get_db))
 
 # --- User Endpoints ---
 
-@router.get("/users", response_model=List[UserResponse], dependencies=[Depends(RequirePermission(Permissions.USER_MANAGER_VIEW))])
+@router.get("/users", response_model=List[UserResponse])
 async def get_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     users = db.query(User).offset(skip).limit(limit).all()
     result = []
@@ -214,7 +213,7 @@ async def get_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_d
         })
     return result
 
-@router.post("/users", response_model=UserResponse, dependencies=[Depends(RequirePermission(Permissions.USER_MANAGER_EDIT))])
+@router.post("/users", response_model=UserResponse)
 async def create_user(user: UserCreate, req: Request, db: Session = Depends(get_db)):
     locale = get_locale(req)
     
@@ -263,7 +262,7 @@ async def create_user(user: UserCreate, req: Request, db: Session = Depends(get_
         "role_name": role.name
     }
 
-@router.put("/users/{user_id}", response_model=UserResponse, dependencies=[Depends(RequirePermission(Permissions.USER_MANAGER_EDIT))])
+@router.put("/users/{user_id}", response_model=UserResponse)
 async def update_user(user_id: str, update: UserUpdate, req: Request, db: Session = Depends(get_db)):
     locale = get_locale(req)
     user = db.query(User).filter(User.id == user_id).first()
@@ -313,7 +312,7 @@ async def update_user(user_id: str, update: UserUpdate, req: Request, db: Sessio
         "role_name": user.role.name
     }
 
-@router.delete("/users/{user_id}", dependencies=[Depends(RequirePermission(Permissions.USER_MANAGER_EDIT))])
+@router.delete("/users/{user_id}")
 async def delete_user(user_id: str, req: Request, db: Session = Depends(get_db)):
     locale = get_locale(req)
     user = db.query(User).filter(User.id == user_id).first()
@@ -335,7 +334,7 @@ async def delete_user(user_id: str, req: Request, db: Session = Depends(get_db))
     db.commit()
     return {"status": "success"}
 
-@router.post("/users/{user_id}/reset-password", response_model=PasswordResetResponse, dependencies=[Depends(RequirePermission(Permissions.USER_MANAGER_EDIT))])
+@router.post("/users/{user_id}/reset-password", response_model=PasswordResetResponse)
 async def reset_password(user_id: str, req: Request, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.id == user_id).first()
     if not user:

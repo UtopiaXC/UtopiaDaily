@@ -1,6 +1,11 @@
 {
-    "module.telegram.desc": "抓取公开 Telegram 频道的新闻和更新。",
-    "module.telegram.config.channels.desc": "Telegram 频道列表（逗号分隔）",
-    "module.telegram.config.lookback.desc": "回溯天数",
-    "module.telegram.task.fetch_news.desc": "获取 Telegram 每日新闻"
+    "module.telegram_channel.name": "Telegram 公开频道抓取",
+    "module.telegram_channel.description": "本模组可以通过Telegram网页版抓取公开频道的最新消息。",
+    "module.telegram_channel.config.channels.desc": "Telegram 频道列表（逗号分隔）",
+    "module.telegram_channel.config.lookback.desc": "回溯天数",
+    "module.telegram_channel.task.fetch_news.desc": "获取 Telegram 每日新闻",
+    "module.telegram_channel.test.no_channels": "未配置频道",
+    "module.telegram_channel.test.success": "连接测试成功",
+    "module.telegram_channel.test.failed": "连接测试失败",
+    "module.telegram_channel.test.error": "测试过程中发生错误"
 }

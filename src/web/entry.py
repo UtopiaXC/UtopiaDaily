@@ -10,16 +10,26 @@ from src.web.dashboard.routers import auth as dashboard_auth
 from src.web.dashboard.routers import layout as dashboard_layout
 from src.web.dashboard.routers import system_config as dashboard_sys_config
 from src.web.dashboard.routers import user_manager as dashboard_user_manager
+from src.web.dashboard.routers import scraper_modules as dashboard_scraper_modules
 from src.web.newspaper.routers import news as newspaper_news
 from src.web import common_routers
 from src.web.middleware.security import SecurityMiddleware
 from src.web.middleware.auth import AuthMiddleware
+from src.web.middleware.permission import PermissionMiddleware
+from src.scraper.modules.module_manager import ModuleManager
 
 TAG = "WEB_ENTRY"
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Log.i(TAG, "Web Server starting...")
+    # Initialize ModuleManager to load module locales into i18n
+    try:
+        Log.i(TAG, "Pre-loading modules for i18n...")
+        ModuleManager()
+    except Exception as e:
+        Log.e(TAG, "Failed to pre-load modules", error=e)
+
     yield
     # Shutdown logic
     Log.i(TAG, "Web Server shutting down...")
@@ -44,12 +54,16 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
+    # Order matters: Auth first, then Permission
+    app.add_middleware(PermissionMiddleware)
     app.add_middleware(AuthMiddleware)
+
     app.include_router(common_routers.router)
     app.include_router(dashboard_auth.router)
     app.include_router(dashboard_layout.router)
     app.include_router(dashboard_sys_config.router)
     app.include_router(dashboard_user_manager.router)
+    app.include_router(dashboard_scraper_modules.router)
 
     # Register Newspaper Routers
     app.include_router(newspaper_news.router)

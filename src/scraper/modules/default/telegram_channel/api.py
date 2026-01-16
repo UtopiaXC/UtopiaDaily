@@ -8,8 +8,9 @@ from typing import Tuple
 TAG = "TELEGRAM_CHANNEL_MODULE_API"
 
 MODULE_META = {
-    "name": "Telegram Channel Scraper",
-    "description": "Scrapes public Telegram channels for news and updates.",
+    "id": "telegram_channel_scraper",
+    "name": "module.telegram_channel.name",
+    "description": "module.telegram_channel.description",
     "version": "1.0.0",
     "author": "UtopiaXC"
 }
@@ -18,7 +19,7 @@ class TelegramChannelModule(BaseModule):
     def enable_module(self) -> bool:
         self.set_module_config(
             key="channels",
-            description="Telegram channel list (comma separated)",
+            description="module.telegram_channel.config.channels.desc",
             value="https://t.me/s/tnews365,https://t.me/s/scitech_fans",
             force_init=False,
             hint="Public channels only",
@@ -26,7 +27,7 @@ class TelegramChannelModule(BaseModule):
         )
         self.set_module_config(
             key="lookback_days",
-            description="Lookback days",
+            description="module.telegram_channel.config.lookback.desc",
             value="3",
             force_init=False,
             hint="Integer",
@@ -34,7 +35,7 @@ class TelegramChannelModule(BaseModule):
         )
         self.set_module_schedule_task(
             key="fetch_news",
-            description="Fetch Telegram daily news",
+            description="module.telegram_channel.task.fetch_news.desc",
             cron="0 8 * * *",
             force_init=False
         )
@@ -62,7 +63,7 @@ class TelegramChannelModule(BaseModule):
         else:
             test_channels = [url.strip() for url in channels_str.split(',') if url.strip()]
             if not test_channels:
-                return False, "No channels configured"
+                return False, "module.telegram_channel.test.no_channels"
 
         # Use just the first channel for a quick connectivity test
         target_channel = test_channels[0]
@@ -70,9 +71,16 @@ class TelegramChannelModule(BaseModule):
         try:
             # Use the scraper's own test method
             scraper = TelegramScraper({})
-            return scraper.test_connection(target_channel)
+            success, msg = scraper.test_connection(target_channel)
+            if success:
+                return True, "module.telegram_channel.test.success"
+            else:
+                # If the scraper returns a specific error message, we might want to keep it or wrap it
+                # For now, let's return a generic failed key, or maybe the scraper should return keys too?
+                # Assuming scraper returns raw error string.
+                return False, f"module.telegram_channel.test.failed: {msg}"
         except Exception as e:
-            return False, f"Connection test failed: {str(e)}"
+            return False, f"module.telegram_channel.test.error: {str(e)}"
 
     def execute_schedule_task(self, cron: str, task_key: str, timestamp: datetime) -> bool:
         if task_key == "fetch_news":
