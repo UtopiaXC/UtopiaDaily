@@ -47,6 +47,7 @@ RUN apk add --no-cache \
 COPY --from=backend-builder /install /usr/local
 
 COPY src ./src
+COPY config ./config
 
 COPY --from=frontend-builder /app/frontend/dist ./src/web/dashboard/frontend/dist
 

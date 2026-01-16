@@ -9,7 +9,8 @@ current_file_path = os.path.abspath(__file__)
 project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_file_path))))
 LOG_DIR = os.path.join(project_root, "logs")
 
-MAX_LOG_SIZE = 1 * 1024 * 1024 * 1024
+# 50M
+MAX_LOG_SIZE = 50 * 1024 * 1024
 
 class VersionedFileHandler(logging.FileHandler):
     def __init__(self, log_dir, prefix, max_bytes=MAX_LOG_SIZE):
@@ -182,9 +183,9 @@ class Log:
         cls._logger.warning(f"[{tag}] {msg}")
 
     @classmethod
-    def e(cls, tag, msg, error=None):
+    def e(cls, tag, msg, error=None, stack_trace=True):
         cls._ensure_initialized()
         if error:
             cls._logger.error(f"[{tag}] {msg}", exc_info=error)
         else:
-            cls._logger.error(f"[{tag}] {msg}", exc_info=True)
+            cls._logger.error(f"[{tag}] {msg}", exc_info=stack_trace)

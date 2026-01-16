@@ -21,6 +21,7 @@ coverage.xml
 .idea
 .DS_Store
 docker
+.env
 
 # Frontend
 src/web/dashboard/frontend/node_modules
