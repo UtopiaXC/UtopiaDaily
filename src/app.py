@@ -19,11 +19,19 @@ from src.database.connection import system_session_scope
 from src.database.models import SystemConfig
 from src.scraper.scraper import run_scraper_service
 from src.web.server import run_web_server
+from src.utils.event import EventManager
 
 children_processes = []
 
 def signal_handler(sig, frame):
     Log.w(TAG,f"Received signal: {sig}, stopping system...")
+    EventManager.record(
+        level=EventManager.LEVEL_WARNING,
+        category=EventManager.CATEGORY_SYSTEM,
+        event_type="system_stopping",
+        summary=f"Received signal {sig}, stopping system...",
+        is_resolved=True
+    )
     cleanup_and_exit()
 
 
@@ -46,6 +54,18 @@ def main():
         Log.i(TAG, "Initializing database and checking migrations...")
         migration_manager.run_migrations()
     except Exception as e:
+        # Try to record event before dying, though DB might be broken
+        try:
+            EventManager.record(
+                level=EventManager.LEVEL_FATAL,
+                category=EventManager.CATEGORY_SYSTEM,
+                event_type="migration_failed",
+                summary="Critical error during database migration",
+                details={"error": str(e)},
+                is_resolved=False
+            )
+        except:
+            pass
         Log.fatal(TAG, "Critical error during database migration. Exiting.", error=e)
     try:
         with system_session_scope() as session:
@@ -77,16 +97,39 @@ def main():
     children_processes.append(web_process)
     Log.i(TAG,f"Web Process up: {web_process.pid}")
 
+    EventManager.record(
+        level=EventManager.LEVEL_NORMAL,
+        category=EventManager.CATEGORY_SYSTEM,
+        event_type="system_started",
+        summary="Utopia Daily System Started",
+        details={"scraper_pid": scraper_process.pid, "web_pid": web_process.pid}
+    )
+
     try:
         while True:
             time.sleep(2)
             for p in children_processes:
                 if not p.is_alive():
                     Log.e(TAG,f"Process Died:{p.name}")
+                    EventManager.record(
+                        level=EventManager.LEVEL_FATAL,
+                        category=EventManager.CATEGORY_SYSTEM,
+                        event_type="process_died",
+                        summary=f"Process Died: {p.name}",
+                        is_resolved=False
+                    )
                     cleanup_and_exit()
 
     except Exception as e:
         Log.e(TAG,f"Main Process Exception: {e}")
+        EventManager.record(
+            level=EventManager.LEVEL_FATAL,
+            category=EventManager.CATEGORY_SYSTEM,
+            event_type="main_process_exception",
+            summary="Main Process Exception",
+            details={"error": str(e)},
+            is_resolved=False
+        )
         cleanup_and_exit()
 
 

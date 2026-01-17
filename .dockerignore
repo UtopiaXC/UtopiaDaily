@@ -22,6 +22,7 @@ coverage.xml
 .DS_Store
 docker
 /config/.env
+cache
 
 # Frontend
 src/web/dashboard/frontend/node_modules

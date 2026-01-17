@@ -17,10 +17,6 @@ def get_db():
 
 @router.get("/system-info")
 async def get_system_info(db: Session = Depends(get_db)):
-    """
-    Returns public system configuration (e.g. server_name).
-    Accessible without authentication.
-    """
     server_name_config = db.query(SystemConfig).filter(SystemConfig.key == "server_name").first()
     server_version_config = db.query(SystemConfig).filter(SystemConfig.key == "server_version").first()
     server_name = server_name_config.value if server_name_config else None
@@ -32,10 +28,6 @@ async def get_system_info(db: Session = Depends(get_db)):
 
 @router.get("/i18n/{locale}")
 async def get_translations(locale: str):
-    """
-    Returns the full translation dictionary for a specific locale.
-    Frontend can use this to load translations dynamically.
-    """
     translations = i18n.translations.get(locale)
     if not translations:
         translations = i18n.translations.get(i18n.default_locale, {})
@@ -44,10 +36,6 @@ async def get_translations(locale: str):
 
 @router.get("/locales")
 async def get_available_locales():
-    """
-    Returns a list of available locales with labels.
-    Reads from src/utils/i18n/languages.json
-    """
     try:
         lang_file = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "utils", "i18n", "languages.json")
         if os.path.exists(lang_file):

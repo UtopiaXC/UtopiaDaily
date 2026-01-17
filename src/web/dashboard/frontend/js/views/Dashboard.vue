@@ -1,6 +1,5 @@
 <template>
     <div class="flex h-screen overflow-hidden bg-gray-100 dark:bg-gray-900 transition-colors duration-200">
-        <!-- Mobile Sidebar Overlay -->
         <div
             v-if="isSidebarOpen"
             class="fixed inset-0 bg-black bg-opacity-50 z-20 md:hidden"

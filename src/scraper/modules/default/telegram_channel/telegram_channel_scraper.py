@@ -42,7 +42,6 @@ def get_message_date(msg_node):
 
 
 def parse_single_message(msg, channel_display_name, target_tz_offset):
-    # 1. Metadata
     post_id_full = msg.get('data-post')
     post_link = f"https://t.me/{post_id_full}" if post_id_full else ""
 
@@ -53,7 +52,6 @@ def parse_single_message(msg, channel_display_name, target_tz_offset):
     dt_target = dt_utc.astimezone(target_tz)
     formatted_time = dt_target.strftime('%Y-%m-%d %H:%M')
 
-    # 2. Quote
     quotation_data = {
         "content": "",
         "content_type": "",
@@ -72,9 +70,7 @@ def parse_single_message(msg, channel_display_name, target_tz_offset):
         quotation_data["content"] = text
         quotation_data["content_type"] = "text"
         quotation_data["from"] = author
-        # datetime_released is not available in the preview block
 
-    # 3. Main Content
     all_text_divs = msg.find_all('div', class_='tgme_widget_message_text')
     main_text_raw = ""
     plain_text_content = ""
@@ -86,7 +82,6 @@ def parse_single_message(msg, channel_display_name, target_tz_offset):
         plain_text_content = div.get_text(strip=True)
         break
 
-    # 4. Link Preview
     preview_block = msg.find(class_='tgme_widget_message_link_preview')
     p_title, p_desc, p_site_name, p_image_url = "", "", "", ""
     if preview_block:
@@ -104,13 +99,11 @@ def parse_single_message(msg, channel_display_name, target_tz_offset):
             match = re.search(r"url\(['\"]?(.*?)['\"]?\)", style)
             if match: p_image_url = match.group(1)
 
-    # 5. Pure Link Check
     raw_content = main_text_raw.replace('\\n', '\n')
     clean_check_str = re.sub(r'[<>]', '', raw_content).strip()
     is_pure_link = bool(
         re.match(r'^https?://\S+$', plain_text_content) or re.match(r'^https?://\S+$', clean_check_str))
 
-    # 6. Title Generation
     title_text = ""
     final_content = ""
     if is_pure_link:
@@ -121,19 +114,15 @@ def parse_single_message(msg, channel_display_name, target_tz_offset):
         final_content = f"{raw_content}\n\n> {p_desc}" if (
                 p_title and p_desc and p_desc not in raw_content) else raw_content
 
-    # Fallback
     if is_pure_link and title_text == "Link Share" and not final_content:
         final_content = f"<{post_link}>"
 
     clean_title = title_text.replace('\n', ' ').strip()[:57]
 
-    # 7. Assemble Markdown
     md_lines = []
-    # Removed reply_md appending here
     if final_content: md_lines.append(final_content)
     if p_image_url: md_lines.append(f"![image]({p_image_url})")
-    
-    # Extract other images from the message body
+
     photo_wraps = msg.find_all('a', class_='tgme_widget_message_photo_wrap')
     for photo in photo_wraps:
         style = photo.get('style', '')
@@ -178,8 +167,7 @@ def fetch_channel(channel_url, lookback_days, target_tz_offset, max_pages):
         page_count += 1
         res = requests.get(current_url, headers=headers, timeout=15)
         soup = BeautifulSoup(res.text, 'html.parser')
-        
-        # Try to extract channel display name if not already found
+
         if not channel_display_name:
             title_tag = soup.find('div', class_='tgme_channel_info_header_title')
             if title_tag:

@@ -11,15 +11,6 @@ class UserPushConfig(BaseModel):
     __tablename__ = 'user_push_config'
 
     user_id = Column(String(36), ForeignKey('user.id'), nullable=False, unique=True)
-    
-    # 存储具体的推送配置
-    # 示例: 
-    # {
-    #   "enable": true,
-    #   "schedule": "0 8 * * *",
-    #   "channels": ["email"],
-    #   "filter_tags": ["tech", "ai"]
-    # }
     config = Column(JSON, nullable=False, default={})
 
     user = relationship("User", back_populates="push_config")

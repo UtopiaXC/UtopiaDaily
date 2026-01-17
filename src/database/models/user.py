@@ -6,7 +6,7 @@ from src.database.models.base_model import BaseModel
 class UserRole(BaseModel):
     __tablename__ = 'user_role'
 
-    name = Column(String(50), unique=True, nullable=False) # e.g., "admin", "editor"
+    name = Column(String(50), unique=True, nullable=False)
     description = Column(String(255), nullable=True)
     permissions = Column(JSON, nullable=False, default={}) 
 
@@ -23,7 +23,6 @@ class User(BaseModel):
     role_id = Column(String(36), ForeignKey('user_role.id'), nullable=False)
     role = relationship("UserRole", back_populates="users")
     sessions = relationship("UserSession", back_populates="user", cascade="all, delete-orphan")
-    # logs = relationship("UserLog", back_populates="user") # Deprecated
     push_config = relationship("UserPushConfig", back_populates="user", uselist=False, cascade="all, delete-orphan")
 
 class UserSession(BaseModel):
@@ -37,4 +36,3 @@ class UserSession(BaseModel):
     is_valid = Column(Boolean, default=True)
     user = relationship("User", back_populates="sessions")
 
-# UserLog class removed. Use SystemEvent instead.

@@ -97,7 +97,6 @@ class Log:
             except Exception:
                 pass
         cls._logger = logging.getLogger("UtopiaDaily")
-        # Default to DEBUG initially, controlled by handlers
         cls._logger.setLevel(logging.DEBUG)
         
         if cls._logger.hasHandlers():
@@ -130,10 +129,6 @@ class Log:
 
     @classmethod
     def set_level(cls, level_str):
-        """
-        Dynamically sets the logging level.
-        :param level_str: "DEBUG", "INFO", "WARNING", "ERROR"
-        """
         cls._ensure_initialized()
         level_map = {
             "DEBUG": logging.DEBUG,
@@ -150,9 +145,6 @@ class Log:
 
     @classmethod
     def setup_global_exception_handler(cls):
-        """
-        Sets up a global exception handler to log uncaught exceptions before exit.
-        """
         def handle_exception(exc_type, exc_value, exc_traceback):
             if issubclass(exc_type, KeyboardInterrupt):
                 sys.__excepthook__(exc_type, exc_value, exc_traceback)

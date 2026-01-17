@@ -12,10 +12,11 @@
                 <h3 class="text-lg font-medium text-gray-900 dark:text-white">{{ t('scraper.modules') }}</h3>
                 <button
                     @click="reloadModules(false)"
-                    class="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 transition-colors"
+                    class="px-3 py-1.5 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg text-xs font-medium transition-colors flex items-center gap-1"
                     :title="t('scraper.reload_modules')"
                 >
-                    <span class="material-icons text-xl" :class="{'animate-spin': reloading}">refresh</span>
+                    <span class="material-icons text-sm" :class="{'animate-spin': reloading}">refresh</span>
+                    {{ t('scraper.reload_modules') }}
                 </button>
             </div>
 
@@ -391,7 +392,7 @@ export default {
         }
     },
     async created() {
-        await this.reloadModules(true);
+        await this.fetchModules(); // Changed from reloadModules(true)
     },
     methods: {
         getSourceBadgeClass(source) {

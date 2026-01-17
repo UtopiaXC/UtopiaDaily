@@ -7,8 +7,7 @@ http.interceptors.request.use(config => {
     if (token) {
         config.headers.Authorization = `Bearer ${token}`;
     }
-    
-    // Add Accept-Language header based on current locale
+
     const locale = localStorage.getItem('locale') || navigator.language;
     config.headers['Accept-Language'] = locale;
 

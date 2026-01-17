@@ -24,9 +24,6 @@ def _generate_math_question():
     return f"{a} {operator} {b} = ?", str(answer)
 
 def _apply_distortion(image):
-    """
-    Apply sine wave distortion to the image.
-    """
     width, height = image.size
     new_image = Image.new("RGB", (width, height), (255, 255, 255))
 
@@ -47,10 +44,6 @@ def _apply_distortion(image):
     return new_image
 
 def generate_captcha():
-    """
-    Generates a distorted arithmetic captcha image (PNG Base64).
-    Returns: (captcha_id, base64_image_src)
-    """
     now = time.time()
 
     if len(_CAPTCHA_STORE) > MAX_STORE_SIZE:
@@ -84,10 +77,9 @@ def generate_captcha():
         draw.point((x, y), fill=(180, 180, 180))
     font_path = None
     import os
-    if os.name == 'nt': # Windows
+    if os.name == 'nt':
         font_path = "arial.ttf"
-    else: # Linux
-        # Common paths
+    else:
         possible_paths = [
             "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
             "/usr/share/fonts/TTF/DejaVuSans.ttf",

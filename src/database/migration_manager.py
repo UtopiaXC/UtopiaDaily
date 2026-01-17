@@ -4,6 +4,7 @@ from sqlalchemy import inspect
 from src.database.connection import system_db_manager, system_session_scope, Base
 from src.database.models import MigrationVersion, SystemConfig, User, UserRole, UserSession, UserPushConfig, ScraperModule, ScraperModuleConfig, SystemEvent
 from src.utils.logger.logger import Log
+from src.utils.event import EventManager
 
 TAG = "MIGRATION_MANAGER"
 
@@ -12,7 +13,6 @@ class MigrationManager:
         self.migrations_dir = os.path.join(os.path.dirname(__file__), "migrations")
 
     def _ensure_system_tables(self):
-        """Ensure the basic system tables exist in system.db."""
         system_db_manager.init_db()
         engine = system_db_manager._engine
         inspector = inspect(engine)
@@ -36,13 +36,11 @@ class MigrationManager:
                 model.__table__.create(engine)
 
     def _get_applied_versions(self):
-        """Get a set of applied migration version names."""
         with system_session_scope() as session:
             versions = session.query(MigrationVersion.version_name).all()
             return {v[0] for v in versions}
 
     def _record_migration(self, version_name, version_code, description):
-        """Record a successful migration."""
         with system_session_scope() as session:
             migration = MigrationVersion(
                 version_name=version_name,
@@ -52,7 +50,6 @@ class MigrationManager:
             session.add(migration)
 
     def run_migrations(self):
-        """Run all pending migrations."""
         Log.i(TAG, "Checking for pending migrations...")
 
         self._ensure_system_tables()
@@ -78,11 +75,30 @@ class MigrationManager:
                     description = getattr(migration_module, 'DESCRIPTION', '')
                     self._record_migration(module_name, version_code, description)
                     Log.i(TAG, f"Migration {module_name} applied successfully.")
+                    
+                    EventManager.record(
+                        level=EventManager.LEVEL_NORMAL,
+                        category=EventManager.CATEGORY_SYSTEM,
+                        event_type="migration_success",
+                        summary=f"Applied migration: {module_name}",
+                        details={"version": version_code, "desc": description}
+                    )
                 else:
                     Log.w(TAG, f"Migration {module_name} missing 'upgrade' function. Skipped.")
                     
             except Exception as e:
                 Log.e(TAG, f"Failed to apply migration {module_name}", error=e)
+                try:
+                    EventManager.record(
+                        level=EventManager.LEVEL_CRITICAL,
+                        category=EventManager.CATEGORY_SYSTEM,
+                        event_type="migration_failed",
+                        summary=f"Failed to apply migration: {module_name}",
+                        details={"error": str(e)},
+                        is_resolved=False
+                    )
+                except:
+                    pass
                 raise e
 
         Log.i(TAG, "Migration check completed.")

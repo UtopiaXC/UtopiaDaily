@@ -4,6 +4,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse, FileResponse
 from contextlib import asynccontextmanager
 import os
+
+from src.utils.event import EventManager
 from src.utils.logger.logger import Log
 from src.web.dashboard.routers import auth as dashboard_auth
 from src.web.dashboard.routers import layout as dashboard_layout
@@ -23,15 +25,14 @@ TAG = "WEB_ENTRY"
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Log.i(TAG, "Web Server starting...")
-    # Initialize ModuleManager to load module locales into i18n
     try:
-        Log.i(TAG, "Pre-loading modules for i18n...")
-        ModuleManager()
+        Log.i(TAG, "Initializing modules and i18n...")
+        manager = ModuleManager()
+        manager.reload_modules() # Scan and compile on startup
     except Exception as e:
-        Log.e(TAG, "Failed to pre-load modules", error=e)
+        Log.e(TAG, "Failed to initialize modules", error=e)
 
     yield
-    # Shutdown logic
     Log.i(TAG, "Web Server shutting down...")
 
 def create_app() -> FastAPI:
@@ -54,7 +55,6 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    # Order matters: Auth first, then Permission
     app.add_middleware(PermissionMiddleware)
     app.add_middleware(AuthMiddleware)
 
@@ -78,6 +78,17 @@ def create_app() -> FastAPI:
         dashboard_dir_to_mount = dashboard_dist_dir
         Log.i(TAG, f"Found Dashboard build artifacts. Mounting: {dashboard_dist_dir}")
     elif os.path.exists(dashboard_src_dir):
+        EventManager.record(
+            level=EventManager.LEVEL_FATAL,
+            category=EventManager.CATEGORY_SYSTEM,
+            event_type="missing_frontend",
+            summary=f"No frontend dist found!",
+            details={
+                "msg": f"System exit unexpectedly due to missing frontend dist in {dashboard_src_dir}",
+            },
+            source_id="web_entry",
+            is_resolved=False
+        )
         Log.fatal(TAG,f"No frontend gist found! Please run npm run build in {dashboard_src_dir} first!")
 
     if dashboard_dir_to_mount:

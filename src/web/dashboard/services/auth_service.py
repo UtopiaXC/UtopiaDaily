@@ -11,7 +11,6 @@ from src.utils.event import EventManager
 
 class AuthService:
     def _record_attempt(self, db: Session, ip_address: str, username: str, success: bool, user_id: str = None):
-        # Use EventManager instead of UserLog
         level = EventManager.LEVEL_NORMAL if success else EventManager.LEVEL_WARNING
         event_type = "login_success" if success else "login_failed"
         summary = f"User {username} login {'success' if success else 'failed'}"

@@ -81,7 +81,6 @@ def upgrade():
                 existing.is_editable = config.get("is_editable", True)
                 existing.is_public = config.get("is_public", False)
                 existing.order = config.get("order", 0)
-                # Reset value to auto if it was hardcoded before (optional, but good for dev)
                 if existing.key == "default_locale" and existing.value not in ["auto", "en_US", "zh_CN"]:
                      existing.value = "auto"
                 Log.i(TAG, f"Config {config['key']} updated.")

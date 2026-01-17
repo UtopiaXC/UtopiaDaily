@@ -6,9 +6,6 @@ router = APIRouter(prefix="/api/dashboard/layout", tags=["Dashboard Layout"])
 
 @router.get("/menu")
 async def get_menu(request: Request, user = Depends(get_current_user)):
-    """
-    Returns the list of menu items (tags) visible to the current user.
-    """
     user_perms = getattr(request.state, "permissions", [])
     
     menu = []
@@ -19,7 +16,6 @@ async def get_menu(request: Request, user = Depends(get_current_user)):
     if Permissions.USER_MANAGER_VIEW in user_perms:
         menu.append({"id": "user_manager", "label": "User Manager", "icon": "people"})
 
-    # Reordered: Scraper & Push Modules before Schedule
     if Permissions.SCRAPER_VIEW in user_perms:
         menu.append({"id": "scraper_modules", "label": "Scraper Modules", "icon": "extension"})
 

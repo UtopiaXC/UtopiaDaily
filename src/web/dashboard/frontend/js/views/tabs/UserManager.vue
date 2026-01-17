@@ -261,7 +261,6 @@ export default {
         groupedPermissions() {
             const groups = {};
             this.allPermissions.forEach(perm => {
-                // Split by first dot to get group (e.g. 'system.config.view' -> 'system')
                 const parts = perm.split('.');
                 const group = parts[0];
                 if (!groups[group]) {
@@ -308,7 +307,6 @@ export default {
             }
         },
 
-        // User Actions
         openUserModal(user = null) {
             this.editingUser = user;
             if (user) {
@@ -334,9 +332,7 @@ export default {
         },
         async saveUser() {
             try {
-                // Frontend Validation
                 if (!this.editingUser) {
-                    // Username: min 3, regex
                     const usernameRegex = /^[a-zA-Z0-9_\-\.@]+$/;
                     if (this.userForm.username.length < 3 || !usernameRegex.test(this.userForm.username)) {
                         this.showToast(this.t('login.username_invalid'), 'error');
@@ -344,7 +340,6 @@ export default {
                     }
                 }
 
-                // Password: min 5 (if provided)
                 if (this.userForm.password && this.userForm.password.length < 5) {
                     this.showToast(this.t('login.password_too_short'), 'error');
                     return;
@@ -352,7 +347,6 @@ export default {
 
                 const payload = { ...this.userForm };
 
-                // Hash password if provided
                 if (payload.password) {
                     payload.password = MD5(payload.password).toString();
                 } else {
@@ -379,7 +373,6 @@ export default {
             }
         },
 
-        // Confirm Dialog Logic
         confirmDeleteUser(user) {
             this.confirmTitle = this.t('common.delete');
             this.confirmMessage = this.t('common.confirm_delete').replace('{name}', user.username);
@@ -448,11 +441,9 @@ export default {
             }
         },
 
-        // Role Actions
         openRoleModal(role = null) {
             this.editingRole = role;
             if (role) {
-                // Convert permissions dict to array for checkboxes
                 const perms = Object.keys(role.permissions).filter(k => role.permissions[k]);
                 this.roleForm = {
                     name: role.name,
@@ -470,7 +461,6 @@ export default {
         },
         async saveRole() {
             try {
-                // Convert permissions array back to dict
                 const permDict = {};
                 this.roleForm.permissions.forEach(p => permDict[p] = true);
 

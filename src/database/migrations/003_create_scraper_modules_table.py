@@ -18,7 +18,6 @@ def upgrade():
         ScraperModule.__table__.create(engine)
     else:
         Log.i(TAG, f"Table {ScraperModule.__tablename__} already exists.")
-        # Check if source column exists, if not add it (Handling the case where table exists but column doesn't)
         columns = [c['name'] for c in inspector.get_columns(ScraperModule.__tablename__)]
         if 'source' not in columns:
             Log.i(TAG, "Adding source column to scraper_modules table")

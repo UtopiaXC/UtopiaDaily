@@ -13,7 +13,6 @@
                 <span v-else class="text-lg font-bold tracking-wider text-white">UD</span>
             </div>
 
-            <!-- Collapse Toggle (Desktop) -->
             <button
                 @click="$emit('toggle-collapse')"
                 class="hidden md:flex items-center justify-center p-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 transition-colors focus:outline-none ml-2"
@@ -22,7 +21,6 @@
             </button>
         </div>
 
-        <!-- Nav -->
         <nav class="flex-1 overflow-y-auto py-4 px-2 space-y-1 overflow-x-hidden">
             <a href="#" @click.prevent="$emit('update:tab', 'dashboard')"
                :class="['group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors', currentTab === 'dashboard' ? 'bg-gray-800 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white', isCollapsed ? 'justify-center' : '']"
@@ -39,7 +37,6 @@
             </a>
         </nav>
 
-        <!-- Footer -->
         <div class="p-4 border-t border-gray-800 dark:border-gray-900 bg-gray-900 dark:bg-gray-950">
             <div class="flex items-center mb-4" :class="{'justify-center': isCollapsed}">
                 <div class="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-sm font-bold shadow-md ring-2 ring-gray-800 flex-shrink-0">

@@ -15,10 +15,6 @@ class TagInjectionFilter(logging.Filter):
         return True
 
 def run_web_server(host="0.0.0.0", port=8000):
-    """
-    Starts the FastAPI server using Uvicorn.
-    This function is intended to be run in a separate process.
-    """
     Log.i(TAG, f"Starting Web Server on {host}:{port}")
     our_logger = Log.get_logger()
     WEB_SERVER_TAG = "WEB_SERVER_CORE"

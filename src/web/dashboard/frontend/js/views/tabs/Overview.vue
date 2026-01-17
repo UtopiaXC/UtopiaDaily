@@ -36,7 +36,6 @@
             </div>
         </div>
 
-        <!-- Event Table -->
         <EventTable :t="t" />
     </div>
 </template>

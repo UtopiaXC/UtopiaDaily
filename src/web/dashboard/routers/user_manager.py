@@ -12,6 +12,7 @@ from src.utils.constants.permissions import Permissions
 from src.utils.security import crypto_manager
 from src.utils.i18n import i18n
 from src.web.dashboard.routers.auth import get_locale
+from src.utils.event import EventManager
 
 router = APIRouter(prefix="/api/dashboard/user-manager", tags=["User Manager"])
 class RoleBase(BaseModel):
@@ -85,10 +86,6 @@ def generate_secure_password(length=12):
             return password
 
 def check_last_admin(db: Session, target_user_id: str):
-    """
-    Check if the target user is the last active admin.
-    Returns True if they are the last admin, False otherwise.
-    """
     admin_role = db.query(UserRole).filter(UserRole.name == "admin").first()
     if not admin_role:
         return False
@@ -115,7 +112,6 @@ def validate_username(username: str):
 
 @router.get("/permissions")
 async def get_all_permissions():
-    """Return all available permission nodes in the system."""
     return Permissions.get_all()
 
 @router.get("/roles", response_model=List[RoleResponse])
@@ -138,7 +134,7 @@ async def get_roles(db: Session = Depends(get_db)):
     return result
 
 @router.post("/roles", response_model=RoleResponse)
-async def create_role(role: RoleCreate, db: Session = Depends(get_db)):
+async def create_role(role: RoleCreate, req: Request, db: Session = Depends(get_db)):
     if db.query(UserRole).filter(UserRole.name == role.name).first():
         raise HTTPException(status_code=400, detail="Role name already exists")
     
@@ -150,6 +146,17 @@ async def create_role(role: RoleCreate, db: Session = Depends(get_db)):
     db.add(new_role)
     db.commit()
     db.refresh(new_role)
+    
+    current_user = getattr(req.state, "user", None)
+    EventManager.record(
+        level=EventManager.LEVEL_NORMAL,
+        category=EventManager.CATEGORY_USER,
+        event_type="role_created",
+        summary=f"Role created: {new_role.name}",
+        details={"role_id": new_role.id, "created_by": current_user.username if current_user else "unknown"},
+        source_id=current_user.id if current_user else None
+    )
+    
     return RoleResponse(id=new_role.id, name=new_role.name, description=new_role.description, permissions=new_role.permissions, user_count=0)
 
 @router.put("/roles/{role_id}", response_model=RoleResponse)
@@ -180,6 +187,16 @@ async def update_role(role_id: str, update: RoleUpdate, req: Request, db: Sessio
     db.commit()
     db.refresh(role)
     
+    current_user = getattr(req.state, "user", None)
+    EventManager.record(
+        level=EventManager.LEVEL_NORMAL,
+        category=EventManager.CATEGORY_USER,
+        event_type="role_updated",
+        summary=f"Role updated: {role.name}",
+        details={"role_id": role.id, "updated_by": current_user.username if current_user else "unknown"},
+        source_id=current_user.id if current_user else None
+    )
+    
     count = db.query(User).filter(User.role_id == role.id).count()
     return RoleResponse(id=role.id, name=role.name, description=role.description, permissions=role.permissions, user_count=count)
 
@@ -199,11 +216,21 @@ async def delete_role(role_id: str, req: Request, db: Session = Depends(get_db))
          detail = i18n.t("user_manager.error_delete_admin_role", locale=locale)
          raise HTTPException(status_code=400, detail=detail)
 
+    role_name = role.name
     db.delete(role)
     db.commit()
+    
+    current_user = getattr(req.state, "user", None)
+    EventManager.record(
+        level=EventManager.LEVEL_WARNING,
+        category=EventManager.CATEGORY_USER,
+        event_type="role_deleted",
+        summary=f"Role deleted: {role_name}",
+        details={"role_id": role_id, "deleted_by": current_user.username if current_user else "unknown"},
+        source_id=current_user.id if current_user else None
+    )
+    
     return {"status": "success"}
-
-# --- User Endpoints ---
 
 @router.get("/users", response_model=List[UserResponse])
 async def get_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
@@ -261,6 +288,16 @@ async def create_user(user: UserCreate, req: Request, db: Session = Depends(get_
     db.commit()
     db.refresh(new_user)
     
+    current_user = getattr(req.state, "user", None)
+    EventManager.record(
+        level=EventManager.LEVEL_NORMAL,
+        category=EventManager.CATEGORY_USER,
+        event_type="user_created",
+        summary=f"User created: {new_user.username}",
+        details={"user_id": new_user.id, "role": role.name, "created_by": current_user.username if current_user else "unknown"},
+        source_id=current_user.id if current_user else None
+    )
+    
     return {
         "id": new_user.id,
         "username": new_user.username,
@@ -277,8 +314,7 @@ async def update_user(user_id: str, update: UserUpdate, req: Request, db: Sessio
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    
-    # Last Admin Protection
+
     is_changing_role = update.role_id is not None and update.role_id != user.role_id
     is_deactivating = update.is_active is False # Explicitly False
     
@@ -320,6 +356,16 @@ async def update_user(user_id: str, update: UserUpdate, req: Request, db: Sessio
     db.commit()
     db.refresh(user)
     
+    current_user = getattr(req.state, "user", None)
+    EventManager.record(
+        level=EventManager.LEVEL_NORMAL,
+        category=EventManager.CATEGORY_USER,
+        event_type="user_updated",
+        summary=f"User updated: {user.username}",
+        details={"user_id": user.id, "updated_by": current_user.username if current_user else "unknown"},
+        source_id=current_user.id if current_user else None
+    )
+    
     return {
         "id": user.id,
         "username": user.username,
@@ -336,20 +382,29 @@ async def delete_user(user_id: str, req: Request, db: Session = Depends(get_db))
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    
-    # Prevent deleting self
+
     current_user = getattr(req.state, "user", None)
     if current_user and current_user.id == user_id:
         detail = i18n.t("user_manager.error_delete_self", locale=locale)
         raise HTTPException(status_code=400, detail=detail)
 
-    # Last Admin Protection
     if check_last_admin(db, user_id):
         detail = i18n.t("user_manager.error_last_admin_delete", locale=locale)
         raise HTTPException(status_code=400, detail=detail)
 
+    username = user.username
     db.delete(user)
     db.commit()
+    
+    EventManager.record(
+        level=EventManager.LEVEL_WARNING,
+        category=EventManager.CATEGORY_USER,
+        event_type="user_deleted",
+        summary=f"User deleted: {username}",
+        details={"user_id": user_id, "deleted_by": current_user.username if current_user else "unknown"},
+        source_id=current_user.id if current_user else None
+    )
+    
     return {"status": "success"}
 
 @router.post("/users/{user_id}/reset-password", response_model=PasswordResetResponse)
@@ -363,14 +418,19 @@ async def reset_password(user_id: str, req: Request, db: Session = Depends(get_d
         raise HTTPException(status_code=400, detail="Cannot force reset your own password. Please use the update profile function.")
 
     new_password = generate_secure_password()
-    
-    # Simulate frontend MD5 hashing before storage
     md5_password = hashlib.md5(new_password.encode()).hexdigest()
     user.password_hash = crypto_manager.get_password_hash(md5_password)
-    
-    # Invalidate all sessions for this user
     db.query(UserSession).filter(UserSession.user_id == user_id).delete()
 
     db.commit()
+    
+    EventManager.record(
+        level=EventManager.LEVEL_WARNING,
+        category=EventManager.CATEGORY_USER,
+        event_type="password_reset",
+        summary=f"Password reset for user: {user.username}",
+        details={"user_id": user_id, "reset_by": current_user.username if current_user else "unknown"},
+        source_id=current_user.id if current_user else None
+    )
     
     return {"new_password": new_password}

@@ -30,9 +30,6 @@ def get_locale(req: Request) -> str:
 
 @router.get("/captcha")
 async def get_captcha():
-    """
-    Returns a new CAPTCHA (SVG image and ID).
-    """
     captcha_id, svg = generate_captcha()
     return {"captcha_id": captcha_id, "svg": svg}
 
@@ -44,7 +41,6 @@ async def login(request: LoginRequest, req: Request, db: Session = Depends(get_d
         ua = req.headers.get("user-agent", "unknown")
         response = auth_service.login(db, request, ip, ua)
         if not response:
-            # Use i18n for error message
             detail = i18n.t("login.invalid_credentials", locale=locale)
             raise HTTPException(status_code=401, detail=detail)
         Log.i("DASHBOARD_AUTH", f"User {request.username} logged in from {ip}")
@@ -60,7 +56,6 @@ async def login(request: LoginRequest, req: Request, db: Session = Depends(get_d
             detail = i18n.t("captcha.invalid", locale=locale)
             raise HTTPException(status_code=400, detail=detail)
         if error_msg == "User is disabled":
-             # Assuming we add this key later, or fallback
              detail = "User is disabled" 
              raise HTTPException(status_code=401, detail=detail)
             
@@ -70,22 +65,11 @@ async def login(request: LoginRequest, req: Request, db: Session = Depends(get_d
 
 @router.get("/me", response_model=UserResponse)
 async def get_current_user_info(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    """
-    Get current logged-in user info.
-    """
-    # Refresh user from DB to get latest data (though get_current_user already does a query)
-    # get_current_user returns a User model instance attached to the session used in AuthMiddleware?
-    # No, AuthMiddleware uses a separate session which is closed.
-    # So 'user' is detached.
-    # We can just return it, but to be safe and get role name, let's query again or use the object if lazy loading works (it won't on detached).
-    
-    # Re-query to ensure attached session and latest data
     current_user = db.query(User).filter(User.id == user.id).first()
     if not current_user:
         raise HTTPException(status_code=404, detail="User not found")
-        
+
     role = db.query(UserRole).filter(UserRole.id == current_user.role_id).first()
-    
     return UserResponse(
         id=current_user.id,
         username=current_user.username,

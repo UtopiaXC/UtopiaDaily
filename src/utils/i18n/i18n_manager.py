@@ -1,7 +1,8 @@
 import json
 import os
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 from src.utils.logger.logger import Log
+from src.utils.cache_manage import cache_manager
 
 TAG = "I18N"
 
@@ -21,47 +22,70 @@ class I18nManager:
         self.default_locale = "en_US"
         self.current_locale = self.default_locale
         self.translations: Dict[str, Dict[str, str]] = {}
-        self.locales_dir = os.path.join(os.path.dirname(__file__), "locales")
-        
-        self._load_locales()
+        self.base_locales_dir = os.path.join(os.path.dirname(__file__), "locales")
+        self._load_from_cache()
+        if not self.translations:
+            self._load_locales_from_dir(self.base_locales_dir, "base")
+            
         self._initialized = True
 
-    def _load_locales(self):
-        if not os.path.exists(self.locales_dir):
-            os.makedirs(self.locales_dir)
+    def _load_from_cache(self):
+        cache_dir = cache_manager.get_cache_dir("locales")
+        if not os.path.exists(cache_dir):
             return
 
-        for filename in os.listdir(self.locales_dir):
+        for filename in os.listdir(cache_dir):
+            if filename.endswith(".json"):
+                locale_code = filename[:-5]
+                data = cache_manager.get(f"locales/{locale_code}")
+                if data:
+                    self.translations[locale_code] = data
+                    Log.i(TAG, f"Loaded locale {locale_code} from cache")
+
+    def _load_locales_from_dir(self, directory: str, source_name: str):
+        if not os.path.exists(directory):
+            return
+
+        for filename in os.listdir(directory):
             if filename.endswith(".json"):
                 locale_code = filename[:-5] # remove .json
                 try:
-                    with open(os.path.join(self.locales_dir, filename), 'r', encoding='utf-8') as f:
+                    with open(os.path.join(directory, filename), 'r', encoding='utf-8') as f:
                         self.translations[locale_code] = json.load(f)
-                    Log.i(TAG, f"Loaded locale: {locale_code}")
+                    Log.i(TAG, f"Loaded locale {locale_code} from {source_name}")
                 except Exception as e:
-                    Log.e(TAG, f"Failed to load locale {filename}", error=e)
+                    Log.e(TAG, f"Failed to load locale {filename} from {source_name}", error=e)
 
-    def load_module_locales(self, module_locales_dir: str):
-        """
-        Load locale files from a module's directory and merge them into the main translations.
-        """
-        if not os.path.exists(module_locales_dir):
-            return
+    def compile_locales(self, module_locale_dirs: List[str]):
+        Log.i(TAG, "Compiling locales...")
+        merged_translations = {}
+        if os.path.exists(self.base_locales_dir):
+            for filename in os.listdir(self.base_locales_dir):
+                if filename.endswith(".json"):
+                    locale_code = filename[:-5]
+                    with open(os.path.join(self.base_locales_dir, filename), 'r', encoding='utf-8') as f:
+                        merged_translations[locale_code] = json.load(f)
 
-        for filename in os.listdir(module_locales_dir):
-            if filename.endswith(".json"):
-                locale_code = filename[:-5] # remove .json
-                try:
-                    with open(os.path.join(module_locales_dir, filename), 'r', encoding='utf-8') as f:
-                        module_trans = json.load(f)
-                        
-                        if locale_code not in self.translations:
-                            self.translations[locale_code] = {}
+        for module_dir in module_locale_dirs:
+            if not os.path.exists(module_dir):
+                continue
+            for filename in os.listdir(module_dir):
+                if filename.endswith(".json"):
+                    locale_code = filename[:-5]
+                    try:
+                        with open(os.path.join(module_dir, filename), 'r', encoding='utf-8') as f:
+                            module_trans = json.load(f)
+                            if locale_code not in merged_translations:
+                                merged_translations[locale_code] = {}
+                            merged_translations[locale_code].update(module_trans)
+                    except Exception as e:
+                        Log.w(TAG, f"Failed to merge locale from {module_dir}/{filename}: {e}")
 
-                        self.translations[locale_code].update(module_trans)
-                        Log.i(TAG, f"Merged module locale: {locale_code} from {module_locales_dir}")
-                except Exception as e:
-                    Log.e(TAG, f"Failed to load module locale {filename} from {module_locales_dir}", error=e)
+        for locale_code, trans in merged_translations.items():
+            cache_manager.set(f"locales/{locale_code}", trans)
+
+        self.translations = merged_translations
+        Log.i(TAG, "Locales compiled and cached.")
 
     def set_locale(self, locale: str):
         if locale in self.translations:
@@ -70,13 +94,6 @@ class I18nManager:
             Log.w(TAG, f"Locale {locale} not found, keeping {self.current_locale}")
 
     def t(self, key: str, locale: Optional[str] = None, **kwargs) -> str:
-        """
-        Translate a key.
-        :param key: The translation key (e.g., 'error.not_found')
-        :param locale: Optional locale override. If None, uses current_locale.
-        :param kwargs: Arguments for string formatting (e.g., name="User")
-        :return: Translated string or the key itself if not found.
-        """
         target_locale = locale or self.current_locale
         if target_locale not in self.translations:
             target_locale = self.default_locale

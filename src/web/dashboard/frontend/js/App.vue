@@ -1,8 +1,6 @@
 <template>
     <div class="font-sans antialiased text-gray-800 dark:text-gray-100">
         <ToastContainer ref="toast" />
-
-        <!-- Loading Screen -->
         <div v-if="isInitializing" class="fixed inset-0 flex items-center justify-center bg-gray-100 dark:bg-gray-900 z-50">
             <div class="flex flex-col items-center">
                 <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
@@ -90,20 +88,17 @@ export default {
     },
     async created() {
         try {
-            // Auth Logout Listener
             window.addEventListener('auth-logout', this.logout);
             window.addEventListener('server-name-updated', (e) => {
                 this.serverName = e.detail;
                 this.updatePageTitle();
             });
 
-            // Initialize Theme
             const storedTheme = localStorage.getItem('theme');
             if (storedTheme === 'dark' || (!storedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
                 this.isDarkMode = true;
             }
 
-            // Initialize Data
             await this.fetchSystemInfo();
             await this.fetchLocales();
 
@@ -120,7 +115,6 @@ export default {
 
             if (storedToken) {
                 this.token = storedToken;
-                // Optimistically set user from storage to avoid flicker if valid
                 if (storedUser) {
                     try {
                         this.user = JSON.parse(storedUser);
@@ -129,7 +123,6 @@ export default {
                     }
                 }
 
-                // Verify token and refresh user data
                 try {
                     await this.fetchCurrentUser();
                     await this.fetchMenu();
@@ -218,7 +211,7 @@ export default {
                 localStorage.setItem('user', JSON.stringify(this.user));
             } catch (err) {
                 console.error("Failed to fetch current user", err);
-                throw err; // Re-throw to handle in created()
+                throw err;
             }
         },
         handleLoginSuccess(data) {

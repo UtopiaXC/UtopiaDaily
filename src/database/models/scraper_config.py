@@ -8,15 +8,14 @@ class ScraperModuleConfig(BaseModel):
     module_id = Column(String(100), ForeignKey('scraper_modules.module_id'), nullable=False, index=True)
     config_key = Column(String(100), nullable=False)
     description = Column(String(255), nullable=True)
-    type = Column(String(50), default="text", nullable=False)  # text, number, switch, date, datetime, select, password, array
-    options = Column(JSON, nullable=True)  # For select/switch types
-    value = Column(JSON, nullable=True)  # The actual value
+    type = Column(String(50), default="text", nullable=False)
+    options = Column(JSON, nullable=True)
+    value = Column(JSON, nullable=True)
     hint = Column(String(255), nullable=True)
     regex = Column(String(255), nullable=True)
-    source = Column(String(20), default="default", nullable=False)  # default, custom
+    source = Column(String(20), default="default", nullable=False)
     is_override = Column(Boolean, default=False, nullable=False)
 
-    # Ensure unique config key per module
     __table_args__ = (
         UniqueConstraint('module_id', 'config_key', name='uix_module_config_key'),
     )

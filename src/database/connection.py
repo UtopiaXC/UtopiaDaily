@@ -1,5 +1,4 @@
 import os
-import sys
 from sqlalchemy import create_engine, event
 from sqlalchemy.engine import URL
 from sqlalchemy.orm import sessionmaker, scoped_session, declarative_base

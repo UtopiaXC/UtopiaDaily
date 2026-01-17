@@ -129,7 +129,6 @@ export default {
                 console.log("Login error:", status, detail);
 
                 if (status === 400 || status === 403) {
-                    // Pass error to modal
                     this.$refs.captchaModal.setError(detail);
                     this.$refs.captchaModal.refresh(true);
                 } else {

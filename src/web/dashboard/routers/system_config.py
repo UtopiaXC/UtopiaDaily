@@ -1,10 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from pydantic import BaseModel
 from src.database.connection import system_db_manager
 from src.database.models import SystemConfig
 from src.utils.logger.logger import Log
+from src.utils.event import EventManager
 
 router = APIRouter(prefix="/api/dashboard/system-config", tags=["System Config"])
 
@@ -38,7 +39,7 @@ async def get_configs(group: Optional[str] = None, db: Session = Depends(get_db)
     return query.all()
 
 @router.put("/{key}")
-async def update_config(key: str, update: ConfigUpdate, db: Session = Depends(get_db)):
+async def update_config(key: str, update: ConfigUpdate, req: Request, db: Session = Depends(get_db)):
     config = db.query(SystemConfig).filter(SystemConfig.key == key).first()
     if not config:
         raise HTTPException(status_code=404, detail="Config not found")
@@ -47,6 +48,7 @@ async def update_config(key: str, update: ConfigUpdate, db: Session = Depends(ge
         raise HTTPException(status_code=403, detail="This config is read-only")
 
     new_value = update.value
+    old_value = config.value
     
     if config.type == "boolean":
         if new_value.lower() not in ["true", "false"]:
@@ -73,5 +75,15 @@ async def update_config(key: str, update: ConfigUpdate, db: Session = Depends(ge
 
     if key == "log_level":
         Log.set_level(new_value)
+        
+    current_user = getattr(req.state, "user", None)
+    EventManager.record(
+        level=EventManager.LEVEL_NORMAL,
+        category=EventManager.CATEGORY_SYSTEM,
+        event_type="config_updated",
+        summary=f"System config updated: {key}",
+        details={"key": key, "old_value": old_value, "new_value": new_value, "updated_by": current_user.username if current_user else "unknown"},
+        source_id=current_user.id if current_user else None
+    )
 
     return {"status": "success", "key": key, "new_value": update.value}
