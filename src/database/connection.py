@@ -4,15 +4,12 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, scoped_session, declarative_base
 from sqlalchemy.exc import OperationalError
 from contextlib import contextmanager
-from dotenv import load_dotenv
 from src.utils.logger.logger import Log
+from src.utils.env_manage.env_manager import EnvManager
 
 TAG = "DB_CONNECTION"
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-ENV_PATH = os.path.join(PROJECT_ROOT, "./config/.env")
-
-load_dotenv(ENV_PATH)
 
 SYSTEM_DB_DIR = os.path.join(PROJECT_ROOT, "database", "system")
 DATA_DB_DIR = os.path.join(PROJECT_ROOT, "database", "data")
@@ -21,7 +18,7 @@ SYSTEM_DB_PATH = os.path.join(SYSTEM_DB_DIR, "system.db")
 DATA_DB_PATH = os.path.join(DATA_DB_DIR, "data.db")
 
 def get_db_url(db_name_suffix=""):
-    db_type = os.getenv("DB_TYPE", "SQLITE").upper()
+    db_type = EnvManager.get_env("DB_TYPE", "SQLITE").upper()
     
     if db_type == "SQLITE":
         if db_name_suffix == "system":
@@ -29,11 +26,11 @@ def get_db_url(db_name_suffix=""):
         else:
             return f"sqlite:///{DATA_DB_PATH}"
             
-    db_host = os.getenv("DB_HOST", "localhost")
-    db_port = os.getenv("DB_PORT", "5432")
-    db_user = os.getenv("DB_USER", "root")
-    db_password = os.getenv("DB_PASSWORD", "root")
-    db_name = os.getenv("DB_NAME", "utopia_daily")
+    db_host = EnvManager.get_env("DB_HOST", "localhost")
+    db_port = EnvManager.get_env("DB_PORT", "5432")
+    db_user = EnvManager.get_env("DB_USER", "postgres")
+    db_password = EnvManager.get_env("DB_PASSWORD", "postgres")
+    db_name = EnvManager.get_env("DB_NAME", "utopia_daily")
     
     target_db_name = f"{db_name}_{db_name_suffix}" if db_name_suffix else db_name
 
@@ -104,11 +101,9 @@ class DatabaseManager:
                         db_name = url.database
                     except:
                         db_name = "unknown"
-                    Log.e(self.tag, f"Database '{db_name}' does not exist. Please create it manually before running the application.", stack_trace=False)
-                    sys.exit(1)
+                    Log.fatal(self.tag, f"Database '{db_name}' does not exist. Please create it manually before running the application.", stack_trace=False)
                 else:
-                    Log.e(self.tag, f"Failed to connect to database: {e}", stack_trace=False)
-                    sys.exit(1)
+                    Log.fatal(self.tag, f"Failed to connect to database: {e}", stack_trace=False)
 
         self._session_factory = scoped_session(
             sessionmaker(autocommit=False, autoflush=False, bind=self._engine)

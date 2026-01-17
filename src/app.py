@@ -4,12 +4,15 @@ import sys
 import os
 import signal
 from src.utils.logger.logger import Log
+from src.utils.env_manage.env_manager import EnvManager
 
 TAG="APP"
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.dirname(current_dir)
 sys.path.append(project_root)
+
+EnvManager.init_env()
 
 from src.database.migration_manager import migration_manager
 from src.database.connection import system_session_scope
@@ -43,8 +46,7 @@ def main():
         Log.i(TAG, "Initializing database and checking migrations...")
         migration_manager.run_migrations()
     except Exception as e:
-        Log.e(TAG, "Critical error during database migration. Exiting.", error=e)
-        sys.exit(1)
+        Log.fatal(TAG, "Critical error during database migration. Exiting.", error=e)
     try:
         with system_session_scope() as session:
             log_level_config = session.query(SystemConfig).filter_by(key="log_level").first()

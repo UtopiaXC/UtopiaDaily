@@ -77,8 +77,7 @@ def create_app() -> FastAPI:
         dashboard_dir_to_mount = dashboard_dist_dir
         Log.i(TAG, f"Found Dashboard build artifacts. Mounting: {dashboard_dist_dir}")
     elif os.path.exists(dashboard_src_dir):
-        Log.e(TAG,f"No frontend gist found! Please run npm run build in {dashboard_src_dir} first!")
-        sys.exit(1)
+        Log.fatal(TAG,f"No frontend gist found! Please run npm run build in {dashboard_src_dir} first!")
 
     if dashboard_dir_to_mount:
         @app.get("/dashboard", include_in_schema=False)

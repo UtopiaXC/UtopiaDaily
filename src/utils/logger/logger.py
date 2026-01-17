@@ -2,6 +2,7 @@ import logging
 import os
 import sys
 import re
+import signal
 from datetime import datetime
 
 
@@ -189,3 +190,14 @@ class Log:
             cls._logger.error(f"[{tag}] {msg}", exc_info=error)
         else:
             cls._logger.error(f"[{tag}] {msg}", exc_info=stack_trace)
+
+    @classmethod
+    def fatal(cls, tag, msg, error=None):
+        cls._ensure_initialized()
+        cls.e(tag, f"FATAL ERROR: {msg} - TERMINATING PROCESS", error=error)
+        try:
+            for handler in cls._logger.handlers:
+                handler.flush()
+        except:
+            pass
+        os.kill(os.getpid(), signal.SIGTERM)
