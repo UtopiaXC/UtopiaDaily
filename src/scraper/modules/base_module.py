@@ -12,10 +12,6 @@ class BaseModule(ABC):
         """
         self._context = context
 
-    # ==========================================
-    # Execute Interface (System API)
-    # ==========================================
-
     def set_module_config(self, key: str, description: str, value: str, value_type: str = "string", options: Optional[Union[List, Dict]] = None, force_init: bool = False, hint: str = "", regular: str = ""):
         """
         Set module configuration parameter.
@@ -42,11 +38,15 @@ class BaseModule(ABC):
         """
         return self._context.drop_module_config(key)
 
-    def set_module_schedule_task(self, key: str, description: str, cron: str = "", force_init: bool = False):
+    def set_module_schedule_task(self, key: str, description: str, name: str = "", force_init: bool = False):
         """
-        Set a scheduled task for the module.
+        Set a scheduled task preset for the module.
+        :param key: Task key (unique within module)
+        :param description: Task description
+        :param name: Human-readable name for the task
+        :param force_init: If True, resets the task preset
         """
-        return self._context.set_module_schedule_task(key, description, cron, force_init)
+        return self._context.set_module_schedule_task(key, description, name, force_init)
 
     def get_module_schedule_task(self, key: str):
         """

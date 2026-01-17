@@ -1,24 +1,17 @@
 import importlib.util
 import os
 import sys
-import threading
-import time
-import traceback
-import json
 import subprocess
-from datetime import datetime
-from typing import Dict, Any, Optional, List, Union, Tuple
-from croniter import croniter
+from typing import Dict, Any, Tuple
 
 from src.utils.logger.logger import Log
 from src.utils.i18n import i18n
 from src.database.connection import system_session_scope
-from src.database.models import ScraperModule, ScraperModuleConfig
+from src.database.models import ScraperModule, ScraperModuleConfig, ScraperModuleTask
 from src.utils.event import EventManager
 from src.utils.cache_manage import cache_manager
 
 TAG = "MODULE_MANAGER"
-DB_FILE = "modules_db.json" # Legacy, kept for tasks
 
 class ModuleContext:
     def __init__(self, module_id: str, manager: 'ModuleManager'):
@@ -34,8 +27,8 @@ class ModuleContext:
     def drop_module_config(self, key):
         self._manager.db_drop_config(self.module_id, key)
 
-    def set_module_schedule_task(self, key, description, cron, force_init):
-        self._manager.db_set_task(self.module_id, key, description, cron, force_init)
+    def set_module_schedule_task(self, key, description, name="", force_init=False):
+        self._manager.db_set_task(self.module_id, key, description, name=name, force_init=force_init)
 
     def get_module_schedule_task(self, key):
         return self._manager.db_get_task(self.module_id, key)
@@ -53,145 +46,7 @@ class ModuleContext:
         return {"status": "success"}
     
     def install_requirements(self, requirements_file: str):
-        """
-        Install requirements from a file into a local 'libs' directory.
-        This allows modules to have their own dependencies without polluting the global environment.
-        """
         return self._manager.install_module_requirements(self.module_id, requirements_file)
-
-
-class ModuleRunner(threading.Thread):
-    def __init__(self, module_id: str, module_path: str, manager: 'ModuleManager'):
-        super().__init__(name=f"Runner-{module_id}")
-        self.module_id = module_id
-        self.module_path = module_path
-        self.manager = manager
-        self.daemon = True
-        
-        self.running = False
-        self.module_instance = None
-        self.retry_count = 0
-        self.max_retries = 3
-        self.is_crashed = False
-        
-        # Scheduling state
-        self.task_states = {}
-        self.task_crons = {}
-
-    def _load_module(self):
-        try:
-            module_dir = os.path.dirname(self.module_path)
-            libs_dir = os.path.join(module_dir, "libs")
-            if os.path.exists(libs_dir) and libs_dir not in sys.path:
-                sys.path.insert(0, libs_dir)
-                Log.i(TAG, f"[{self.module_id}] Added local libs to path: {libs_dir}")
-            if module_dir not in sys.path:
-                sys.path.insert(0, module_dir)
-            
-            # Locales are now loaded globally by ModuleManager
-            
-            spec = importlib.util.spec_from_file_location(f"module_{self.module_id}", self.module_path)
-            if spec is None:
-                raise ImportError(f"Could not load spec for {self.module_path}")
-            
-            module_lib = importlib.util.module_from_spec(spec)
-            sys.modules[f"module_{self.module_id}"] = module_lib
-            spec.loader.exec_module(module_lib)
-
-            if not hasattr(module_lib, 'create_module'):
-                raise ImportError("Module missing 'create_module' factory function")
-
-            context = ModuleContext(self.module_id, self.manager)
-            self.module_instance = module_lib.create_module(context)
-            return True
-        except Exception as e:
-            Log.e(TAG, f"[{self.module_id}] Load failed", error=e)
-            return False
-
-    def run(self):
-        Log.i(TAG, f"[{self.module_id}] Runner started")
-        self.running = True
-        if not self._load_module():
-            self._handle_crash("Initialization failed")
-            return
-        while self.running:
-            try:
-                earliest_next_run = self._check_schedules()
-                sleep_time = 5.0
-                if earliest_next_run:
-                    now = datetime.now()
-                    delta = (earliest_next_run - now).total_seconds()
-                    sleep_time = max(0.1, min(delta, 5.0))
-                time.sleep(sleep_time)
-            except Exception as e:
-                Log.e(TAG, f"[{self.module_id}] Loop exception", error=e)
-                if not self._handle_crash(str(e)):
-                    break
-        
-        Log.i(TAG, f"[{self.module_id}] Runner stopped")
-
-    def _check_schedules(self) -> Optional[datetime]:
-        tasks = self.manager.db_get_all_tasks(self.module_id)
-        now = datetime.now()
-        next_runs: List[datetime] = []
-        for task_key, task_info in tasks.items():
-            cron_expr = task_info.get('cron')
-            if not cron_expr: continue
-            if task_key in self.task_crons and self.task_crons[task_key] != cron_expr:
-                Log.i(TAG, f"[{self.module_id}] Cron changed for {task_key}, rescheduling.")
-                if task_key in self.task_states:
-                    del self.task_states[task_key]
-            self.task_crons[task_key] = cron_expr
-            if task_key not in self.task_states:
-                try:
-                    self.task_states[task_key] = croniter(cron_expr, now).get_next(datetime)
-                    Log.i(TAG, f"[{self.module_id}] Scheduled {task_key} for {self.task_states[task_key]}")
-                except Exception as e:
-                    Log.w(TAG, f"[{self.module_id}] Invalid cron '{cron_expr}' for {task_key}: {e}")
-                    self.task_states[task_key] = None
-            
-            next_run = self.task_states.get(task_key)
-            if next_run and now >= next_run:
-                self._execute_task(cron_expr, task_key, now)
-                try:
-                    self.task_states[task_key] = croniter(cron_expr, now).get_next(datetime)
-                    Log.i(TAG, f"[{self.module_id}] Next {task_key} at {self.task_states[task_key]}")
-                except Exception as e:
-                    Log.e(TAG, f"[{self.module_id}] Failed to schedule next run for {task_key}", error=e)
-                    self.task_states[task_key] = None
-            if self.task_states.get(task_key):
-                next_runs.append(self.task_states[task_key])
-        
-        if next_runs:
-            return min(next_runs)
-        return None
-
-    def _execute_task(self, cron, task_key, now):
-        Log.i(TAG, f"[{self.module_id}] Executing task: {task_key}")
-        try:
-            self.module_instance.execute_schedule_task(cron, task_key, now)
-        except Exception as e:
-            Log.e(TAG, f"[{self.module_id}] Task {task_key} failed", error=e)
-
-    def _handle_crash(self, reason):
-        self.retry_count += 1
-        Log.e(TAG, f"[{self.module_id}] CRASHED ({self.retry_count}/{self.max_retries}): {reason}")
-        Log.e(TAG, traceback.format_exc())
-
-        if self.retry_count > self.max_retries:
-            Log.e(TAG, f"[{self.module_id}] Max retries exceeded. Disabling module.")
-            self.is_crashed = True
-            self.running = False
-            self.manager.notify_module_disabled(self.module_id, reason)
-            return False
-        
-        time.sleep(2)
-        if self._load_module():
-             return True
-        return False
-
-    def stop(self):
-        self.running = False
 
 
 class ModuleManager:
@@ -212,33 +67,13 @@ class ModuleManager:
             "default": os.path.join(current_dir, "default"),
             "external": os.path.join(current_dir, "external")
         }
-        self.db_path = os.path.join(current_dir, DB_FILE)
         
-        self.db = {} 
-        self.runners: Dict[str, ModuleRunner] = {}
-        self._logged_conflicts = set() # Track logged conflicts to avoid spam
+        self._logged_conflicts = set()
         self._modules_cache = {}
         
-        self._load_db()
         self._load_modules_cache()
         
         self._initialized = True
-
-    # TODO: replace real db
-    def _load_db(self):
-        if os.path.exists(self.db_path):
-            try:
-                with open(self.db_path, 'r', encoding='utf-8') as f:
-                    self.db = json.load(f)
-            except Exception as e:
-                Log.e(TAG, "Failed to load DB", error=e)
-
-    def _save_db(self):
-        try:
-            with open(self.db_path, 'w', encoding='utf-8') as f:
-                json.dump(self.db, f, indent=2)
-        except Exception as e:
-            Log.e(TAG, "Failed to save DB", error=e)
 
     def _load_modules_cache(self):
         data = cache_manager.get("modules")
@@ -249,13 +84,15 @@ class ModuleManager:
     def _save_modules_cache(self):
         cache_manager.set("modules", self._modules_cache)
 
-    def _ensure_db_entry(self, module_id):
-        if module_id not in self.db:
-            self.db[module_id] = {"config": {}, "tasks": {}, "enabled": False}
-
     def db_set_config(self, module_id, key, description, value, value_type, options, force_init, hint, regular):
         with system_session_scope() as session:
-            config = session.query(ScraperModuleConfig).filter_by(module_id=module_id, config_key=key).first()
+            # Get module internal ID
+            module = session.query(ScraperModule).filter_by(module_id=module_id).first()
+            if not module:
+                Log.e(TAG, f"Module {module_id} not found in DB")
+                return
+
+            config = session.query(ScraperModuleConfig).filter_by(module_id=module.id, config_key=key).first()
             
             if config:
                 if force_init:
@@ -276,9 +113,8 @@ class ModuleManager:
                     if config.value is None:
                         config.value = value
             else:
-                # Create new
                 new_config = ScraperModuleConfig(
-                    module_id=module_id,
+                    module_id=module.id,
                     config_key=key,
                     description=description,
                     type=value_type,
@@ -294,41 +130,83 @@ class ModuleManager:
 
     def db_get_config(self, module_id, key):
         with system_session_scope() as session:
-            config = session.query(ScraperModuleConfig).filter_by(module_id=module_id, config_key=key).first()
+            module = session.query(ScraperModule).filter_by(module_id=module_id).first()
+            if not module:
+                return None
+            config = session.query(ScraperModuleConfig).filter_by(module_id=module.id, config_key=key).first()
             if config:
                 return config.value
             return None
 
     def db_drop_config(self, module_id, key):
         with system_session_scope() as session:
-            config = session.query(ScraperModuleConfig).filter_by(module_id=module_id, config_key=key).first()
+            module = session.query(ScraperModule).filter_by(module_id=module_id).first()
+            if not module:
+                return
+            config = session.query(ScraperModuleConfig).filter_by(module_id=module.id, config_key=key).first()
             if config:
                 session.delete(config)
                 Log.i(TAG, f"[{module_id}] Config '{key}' deleted.")
 
-    def db_set_task(self, module_id, key, description, cron, force_init):
-        self._ensure_db_entry(module_id)
-        task_store = self.db[module_id]["tasks"]
-        if key not in task_store or force_init:
-            task_store[key] = {
-                "cron": cron,
-                "description": description
-            }
-        self._save_db()
+    def db_set_task(self, module_id, key, description, name, force_init):
+        with system_session_scope() as session:
+            module = session.query(ScraperModule).filter_by(module_id=module_id).first()
+            if not module:
+                Log.e(TAG, f"Module {module_id} not found in DB")
+                return
+
+            task = session.query(ScraperModuleTask).filter_by(module_id=module.id, task_key=key).first()
+            
+            if task:
+                if force_init:
+                    task.description = description
+                    task.name = name
+                    Log.i(TAG, f"[{module_id}] Task '{key}' reset.")
+                else:
+                    task.description = description
+                    if not task.name:
+                        task.name = name
+            else:
+                new_task = ScraperModuleTask(
+                    module_id=module.id,
+                    task_key=key,
+                    name=name,
+                    description=description
+                )
+                session.add(new_task)
+                Log.i(TAG, f"[{module_id}] Task '{key}' initialized.")
 
     def db_get_task(self, module_id, key):
-        self._ensure_db_entry(module_id)
-        task = self.db[module_id]["tasks"].get(key)
-        return task["cron"] if task else None
+        with system_session_scope() as session:
+            module = session.query(ScraperModule).filter_by(module_id=module_id).first()
+            if not module:
+                return None
+            task = session.query(ScraperModuleTask).filter_by(module_id=module.id, task_key=key).first()
+            if task:
+                return {
+                    "key": task.task_key,
+                    "name": task.name,
+                    "description": task.description
+                }
+            return None
 
     def db_drop_task(self, module_id, key):
-        if module_id in self.db and key in self.db[module_id]["tasks"]:
-            del self.db[module_id]["tasks"][key]
-            self._save_db()
+        with system_session_scope() as session:
+            module = session.query(ScraperModule).filter_by(module_id=module_id).first()
+            if not module:
+                return
+            task = session.query(ScraperModuleTask).filter_by(module_id=module.id, task_key=key).first()
+            if task:
+                session.delete(task)
+                Log.i(TAG, f"[{module_id}] Task '{key}' deleted.")
 
     def db_get_all_tasks(self, module_id):
-        self._ensure_db_entry(module_id)
-        return self.db[module_id]["tasks"]
+        with system_session_scope() as session:
+            module = session.query(ScraperModule).filter_by(module_id=module_id).first()
+            if not module:
+                return {}
+            tasks = session.query(ScraperModuleTask).filter_by(module_id=module.id).all()
+            return {t.task_key: {"name": t.name, "description": t.description} for t in tasks}
     
     def is_module_enabled(self, module_id):
         with system_session_scope() as session:
@@ -495,11 +373,7 @@ class ModuleManager:
                     module = session.query(ScraperModule).filter_by(module_id=module_id).first()
                     if module:
                         module.is_enable = True
-                        self._ensure_db_entry(module_id)
-                        self.db[module_id]["enabled"] = True
-                        self._save_db()
-                
-                self.start_module(module_id)
+
                 return True
             else:
                 Log.e(TAG, f"Module {module_id} failed to enable")
@@ -537,37 +411,13 @@ class ModuleManager:
             return False
 
     def start_module(self, module_id):
-        if not self.is_module_enabled(module_id):
-            Log.w(TAG, f"Cannot start module {module_id}: Not enabled in DB")
-            return False
-        if module_id in self.runners and self.runners[module_id].is_alive():
-            return True
-        
-        module_info = self.get_module_info(module_id)
-        if not module_info:
-            return False
-            
-        Log.i(TAG, f"Starting module: {module_id}")
-        runner = ModuleRunner(module_id, module_info["path"], self)
-        self.runners[module_id] = runner
-        runner.start()
-        return True
+        pass
 
     def disable_module(self, module_id):
-        if module_id in self.runners:
-            runner = self.runners[module_id]
-            runner.stop()
-            runner.join(timeout=5)
-            del self.runners[module_id]
-
         with system_session_scope() as session:
             module = session.query(ScraperModule).filter_by(module_id=module_id).first()
             if module:
                 module.is_enable = False
-
-        if module_id in self.db:
-            self.db[module_id]["enabled"] = False
-            self._save_db()
             
         Log.i(TAG, f"Module {module_id} disabled")
 
@@ -588,19 +438,6 @@ class ModuleManager:
 
     def test_module(self, module_id):
         Log.i(TAG, f"Testing module: {module_id}")
-
-        if module_id in self.runners and self.runners[module_id].is_alive():
-            runner = self.runners[module_id]
-            if runner.module_instance:
-                try:
-                    if hasattr(runner.module_instance, 'test_module'):
-                        return runner.module_instance.test_module()
-                    else:
-                        return False, "Module instance does not support testing"
-                except Exception as e:
-                    Log.e(TAG, f"Error testing running module {module_id}", error=e)
-                    return False, str(e)
-
         module_info = self.get_module_info(module_id)
         if not module_info:
             return False, "Module not found"
@@ -632,16 +469,6 @@ class ModuleManager:
             return False, str(e)
 
     def test_module_config(self, module_id: str, config: Dict[str, Any]) -> Tuple[bool, str]:
-        if module_id in self.runners and self.runners[module_id].is_alive():
-            runner = self.runners[module_id]
-            if runner.module_instance:
-                try:
-                    if hasattr(runner.module_instance, 'test_config'):
-                        return runner.module_instance.test_config(config)
-                    else:
-                        return True, "Module does not support config testing (assumed valid)"
-                except Exception as e:
-                    return False, f"Config test error: {str(e)}"
         module_info = self.get_module_info(module_id)
         if not module_info:
             return False, "Module not found"

@@ -47,6 +47,7 @@ max_pages_conf = {
 
 task_fetch = {
     "key": "fetch_news",
+    "name": "module.telegram_channel.task.fetch_news.name",
     "description": "module.telegram_channel.task.fetch_news.desc",
     "force_init": False
 }
@@ -74,28 +75,20 @@ def test_telegram_access():
 def test_configuration(config):
     channels = config.get("channels", [])
     if not channels:
-        # It's valid to have no channels, just nothing to test
         return True, "No channels configured"
     
     if isinstance(channels, str):
-        # Fallback for legacy string input
         channels = [c.strip() for c in channels.split('\n') if c.strip()]
     
     failed_channels = []
     for channel in channels:
         channel = str(channel).strip()
         if not channel: continue
-        
-        # Normalize URL logic same as execute_schedule_task
         if not channel.startswith("http"):
             if channel.startswith("t.me/"):
                 channel = f"https://{channel}"
             else:
                 channel = f"https://t.me/s/{channel}"
-        
-        # test_connection handles /s/ replacement internally if needed, 
-        # but let's be consistent
-        
         success, msg = scraper.test_connection(channel)
         if not success:
             failed_channels.append(channel)

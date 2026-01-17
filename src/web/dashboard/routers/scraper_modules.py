@@ -3,8 +3,8 @@ from sqlalchemy.orm import Session
 from typing import List, Dict, Any
 import re
 from src.database.connection import system_db_manager
-from src.database.models import ScraperModule, ScraperModuleConfig
-from src.web.dashboard.schemas import ScraperModuleResponse, ScraperModuleDetailResponse, TestModuleResponse, ScraperModuleConfigItem
+from src.database.models import ScraperModule, ScraperModuleConfig, ScraperModuleTask
+from src.web.dashboard.schemas import ScraperModuleResponse, ScraperModuleDetailResponse, TestModuleResponse, ScraperModuleConfigItem, ScraperModuleTaskResponse, ScraperModuleTaskItem
 from src.utils.logger.logger import Log
 from src.scraper.modules.module_manager import ModuleManager
 from src.web.dependencies import get_db
@@ -27,7 +27,7 @@ async def get_module_detail(module_id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Module not found")
 
     # Fetch Configs from DB
-    configs = db.query(ScraperModuleConfig).filter(ScraperModuleConfig.module_id == module_id).all()
+    configs = db.query(ScraperModuleConfig).filter(ScraperModuleConfig.module_id == module.id).all()
     config_dict = {}
     for cfg in configs:
         config_dict[cfg.config_key] = {
@@ -40,9 +40,6 @@ async def get_module_detail(module_id: str, db: Session = Depends(get_db)):
             "source": cfg.source,
             "is_override": cfg.is_override
         }
-
-    # Fetch Tasks from JSON (Legacy, TODO: Migrate to DB)
-    tasks = local_manager.db.get(module_id, {}).get("tasks", {})
     
     return ScraperModuleDetailResponse(
         id=module.id,
@@ -56,8 +53,29 @@ async def get_module_detail(module_id: str, db: Session = Depends(get_db)):
         source=module.source,
         updated_at=module.updated_at,
         created_at=module.created_at,
-        config=config_dict,
-        tasks=tasks
+        config=config_dict
+    )
+
+@router.get("/{module_id}/tasks", response_model=ScraperModuleTaskResponse)
+async def get_module_tasks(module_id: str, db: Session = Depends(get_db)):
+    module = db.query(ScraperModule).filter(ScraperModule.module_id == module_id, ScraperModule.is_deleted == False).first()
+    if not module:
+        raise HTTPException(status_code=404, detail="Module not found")
+
+    tasks = db.query(ScraperModuleTask).filter(ScraperModuleTask.module_id == module.id).all()
+    task_list = []
+    for task in tasks:
+        task_list.append({
+            "id": task.id,
+            "key": task.task_key,
+            "name": task.name,
+            "description": task.description
+        })
+    
+    return ScraperModuleTaskResponse(
+        module_id=module.module_id,
+        module_name=module.name,
+        tasks=task_list
     )
 
 @router.post("/{module_id}/test_config", response_model=TestModuleResponse)
@@ -90,7 +108,7 @@ async def update_module_config(module_id: str, req: Request, config: Dict[str, A
     # 1. Basic Validation (Type & Regex)
     for key, value in config.items():
         cfg_item = db.query(ScraperModuleConfig).filter(
-            ScraperModuleConfig.module_id == module_id,
+            ScraperModuleConfig.module_id == module.id,
             ScraperModuleConfig.config_key == key
         ).first()
         
@@ -126,7 +144,7 @@ async def update_module_config(module_id: str, req: Request, config: Dict[str, A
 
     for key, value in config.items():
         cfg_item = db.query(ScraperModuleConfig).filter(
-            ScraperModuleConfig.module_id == module_id,
+            ScraperModuleConfig.module_id == module.id,
             ScraperModuleConfig.config_key == key
         ).first()
         if cfg_item:

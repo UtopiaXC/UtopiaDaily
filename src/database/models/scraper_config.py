@@ -5,7 +5,7 @@ from src.database.models.base_model import BaseModel
 class ScraperModuleConfig(BaseModel):
     __tablename__ = 'scraper_module_configs'
 
-    module_id = Column(String(100), ForeignKey('scraper_modules.module_id'), nullable=False, index=True)
+    module_id = Column(String(36), ForeignKey('scraper_modules.id'), nullable=False, index=True)
     config_key = Column(String(100), nullable=False)
     description = Column(String(255), nullable=True)
     type = Column(String(50), default="text", nullable=False)

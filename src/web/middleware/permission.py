@@ -27,6 +27,9 @@ RULES = [
     PermissionRule(r"^/api/dashboard/user-manager.*", ["GET"], Permissions.USER_MANAGER_VIEW),
     PermissionRule(r"^/api/dashboard/user-manager.*", ["POST", "PUT", "DELETE"], Permissions.USER_MANAGER_EDIT),
 
+    # Scraper Modules
+    # Specific rule for tasks must come before general module rules
+    PermissionRule(r"^/api/dashboard/scraper/modules/[^/]+/tasks", ["GET"], Permissions.SCHEDULE_VIEW),
     PermissionRule(r"^/api/dashboard/scraper/modules.*", ["GET"], Permissions.SCRAPER_VIEW),
     PermissionRule(r"^/api/dashboard/scraper/modules.*", ["POST"], Permissions.SCRAPER_EDIT),
 

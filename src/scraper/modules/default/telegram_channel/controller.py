@@ -34,7 +34,8 @@ class TelegramChannelModule(BaseModule):
         for task in list_tasks:
             self.set_module_schedule_task(
                 key=task["key"],
-                description=task["description"]
+                description=task["description"],
+                name=task["name"]
             )
         Log.i(TAG, "Module enabled")
         return True
@@ -50,9 +51,6 @@ class TelegramChannelModule(BaseModule):
             return False, "module.telegram_channel.test.failed"
 
     def test_config(self, config: Dict[str, Any]) -> Tuple[bool, str]:
-        """
-        Test the provided configuration.
-        """
         return service.test_configuration(config)
 
     def execute_schedule_task(self, cron: str, task_key: str, timestamp: datetime) -> bool:

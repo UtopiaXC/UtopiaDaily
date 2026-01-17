@@ -47,12 +47,18 @@ class ScraperModuleConfigItem(BaseModel):
     is_override: bool = False
 
 class ScraperModuleTaskItem(BaseModel):
-    cron: str
+    id: str
+    key: str
+    name: str
     description: str
 
 class ScraperModuleDetailResponse(ScraperModuleResponse):
     config: Dict[str, ScraperModuleConfigItem]
-    tasks: Dict[str, ScraperModuleTaskItem]
+
+class ScraperModuleTaskResponse(BaseModel):
+    module_id: str
+    module_name: str
+    tasks: List[ScraperModuleTaskItem]
 
 class TestModuleResponse(BaseModel):
     success: bool

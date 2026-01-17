@@ -94,7 +94,7 @@
     "scraper.modules": "抓取模组",
     "scraper.reload_modules": "重新扫描模组",
     "scraper.module_config": "模组配置",
-    "scraper.no_config": "暂无配置",
+    "scraper.no_config": "暂无配置（您需要启用模组成功后才能看到可配置的详情）",
     "scraper.tasks": "定时任务",
     "scraper.no_tasks": "暂无定时任务",
     "scraper.select_module": "请选择一个模组查看详情",

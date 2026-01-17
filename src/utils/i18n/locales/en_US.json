@@ -94,7 +94,7 @@
     "scraper.modules": "Scraper Modules",
     "scraper.reload_modules": "Reload Modules",
     "scraper.module_config": "Module Configuration",
-    "scraper.no_config": "No configuration available",
+    "scraper.no_config": "No configuration available (You need to enable the module to see the details)",
     "scraper.tasks": "Scheduled Tasks",
     "scraper.no_tasks": "No scheduled tasks",
     "scraper.select_module": "Select a module to view details",

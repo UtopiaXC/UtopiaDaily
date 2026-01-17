@@ -2,7 +2,7 @@ import importlib
 import os
 from sqlalchemy import inspect
 from src.database.connection import system_db_manager, system_session_scope, Base
-from src.database.models import MigrationVersion, SystemConfig, User, UserRole, UserSession, UserPushConfig, ScraperModule, ScraperModuleConfig, SystemEvent
+from src.database.models import MigrationVersion, SystemConfig, User, UserRole, UserSession, UserPushConfig, ScraperModule, ScraperModuleConfig, ScraperModuleTask, SystemEvent
 from src.utils.logger.logger import Log
 from src.utils.event import EventManager
 
@@ -26,6 +26,7 @@ class MigrationManager:
             UserPushConfig,
             ScraperModule,
             ScraperModuleConfig,
+            ScraperModuleTask,
             SystemEvent
         ]
 
