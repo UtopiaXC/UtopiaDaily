@@ -2,32 +2,42 @@
     <div class="font-sans antialiased text-gray-800 dark:text-gray-100">
         <ToastContainer ref="toast" />
 
-        <Login
-            v-if="!isLoggedIn"
-            :server-name="serverName"
-            :is-dark-mode="isDarkMode"
-            :current-locale="currentLocale"
-            :ui-locale-options="uiLocaleOptions"
-            :t="t"
-            @toggle-dark-mode="toggleDarkMode"
-            @update:locale="changeLocale"
-            @login-success="handleLoginSuccess"
-        />
+        <!-- Loading Screen -->
+        <div v-if="isInitializing" class="fixed inset-0 flex items-center justify-center bg-gray-100 dark:bg-gray-900 z-50">
+            <div class="flex flex-col items-center">
+                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+                <p class="mt-4 text-gray-500 dark:text-gray-400 text-sm">Loading Utopia Daily...</p>
+            </div>
+        </div>
 
-        <Dashboard
-            v-else
-            :server-name="serverName"
-            :user="user"
-            :menu="menu"
-            :is-dark-mode="isDarkMode"
-            :current-locale="currentLocale"
-            :ui-locale-options="uiLocaleOptions"
-            :all-locales="allLocales"
-            :t="t"
-            @logout="logout"
-            @toggle-dark-mode="toggleDarkMode"
-            @update:locale="changeLocale"
-        />
+        <template v-else>
+            <Login
+                v-if="!isLoggedIn"
+                :server-name="serverName"
+                :is-dark-mode="isDarkMode"
+                :current-locale="currentLocale"
+                :ui-locale-options="uiLocaleOptions"
+                :t="t"
+                @toggle-dark-mode="toggleDarkMode"
+                @update:locale="changeLocale"
+                @login-success="handleLoginSuccess"
+            />
+
+            <Dashboard
+                v-else
+                :server-name="serverName"
+                :user="user"
+                :menu="menu"
+                :is-dark-mode="isDarkMode"
+                :current-locale="currentLocale"
+                :ui-locale-options="uiLocaleOptions"
+                :all-locales="allLocales"
+                :t="t"
+                @logout="logout"
+                @toggle-dark-mode="toggleDarkMode"
+                @update:locale="changeLocale"
+            />
+        </template>
     </div>
 </template>
 
@@ -46,6 +56,7 @@ export default {
     },
     data() {
         return {
+            isInitializing: true,
             serverName: 'Utopia Daily',
             isDarkMode: false,
 
@@ -60,7 +71,7 @@ export default {
     },
     computed: {
         isLoggedIn() {
-            return !!this.token;
+            return !!this.token && !!this.user;
         },
         uiLocaleOptions() {
             return this.allLocales.filter(l => l.value !== 'auto');
@@ -78,41 +89,61 @@ export default {
         }
     },
     async created() {
-        // Auth Logout Listener
-        window.addEventListener('auth-logout', this.logout);
-        window.addEventListener('server-name-updated', (e) => {
-            this.serverName = e.detail;
+        try {
+            // Auth Logout Listener
+            window.addEventListener('auth-logout', this.logout);
+            window.addEventListener('server-name-updated', (e) => {
+                this.serverName = e.detail;
+                this.updatePageTitle();
+            });
+
+            // Initialize Theme
+            const storedTheme = localStorage.getItem('theme');
+            if (storedTheme === 'dark' || (!storedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                this.isDarkMode = true;
+            }
+
+            // Initialize Data
+            await this.fetchSystemInfo();
+            await this.fetchLocales();
+
+            const storedLocale = localStorage.getItem('locale');
+            if (storedLocale) {
+                this.currentLocale = storedLocale;
+            } else {
+                this.currentLocale = this.detectBrowserLocale();
+            }
+            await this.loadMessages();
+
+            const storedToken = localStorage.getItem('token');
+            const storedUser = localStorage.getItem('user');
+
+            if (storedToken) {
+                this.token = storedToken;
+                // Optimistically set user from storage to avoid flicker if valid
+                if (storedUser) {
+                    try {
+                        this.user = JSON.parse(storedUser);
+                    } catch (e) {
+                        console.error("Invalid stored user data");
+                    }
+                }
+
+                // Verify token and refresh user data
+                try {
+                    await this.fetchCurrentUser();
+                    await this.fetchMenu();
+                } catch (e) {
+                    // Token invalid or expired
+                    this.logout();
+                }
+            }
+        } catch (e) {
+            console.error("Initialization error", e);
+        } finally {
+            this.isInitializing = false;
             this.updatePageTitle();
-        });
-
-        // Initialize Theme
-        const storedTheme = localStorage.getItem('theme');
-        if (storedTheme === 'dark' || (!storedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-            this.isDarkMode = true;
         }
-
-        // Initialize Data
-        await this.fetchSystemInfo();
-        await this.fetchLocales();
-
-        const storedLocale = localStorage.getItem('locale');
-        if (storedLocale) {
-            this.currentLocale = storedLocale;
-        } else {
-            this.currentLocale = this.detectBrowserLocale();
-        }
-        await this.loadMessages();
-
-        const storedToken = localStorage.getItem('token');
-        const storedUser = localStorage.getItem('user');
-        if (storedToken && storedUser) {
-            this.token = storedToken;
-            this.user = JSON.parse(storedUser);
-            this.fetchMenu();
-            this.fetchCurrentUser();
-        }
-
-        this.updatePageTitle();
     },
     methods: {
         t(key, defaultVal) {
@@ -187,6 +218,7 @@ export default {
                 localStorage.setItem('user', JSON.stringify(this.user));
             } catch (err) {
                 console.error("Failed to fetch current user", err);
+                throw err; // Re-throw to handle in created()
             }
         },
         handleLoginSuccess(data) {

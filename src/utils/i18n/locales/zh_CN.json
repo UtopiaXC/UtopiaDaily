@@ -40,6 +40,18 @@
     "common.warning": "警告",
     "common.continue": "继续",
     "common.enabling": "启用中...",
+    "common.all_levels": "所有等级",
+    "common.all_categories": "所有分类",
+    "common.level": "等级",
+    "common.category": "分类",
+    "common.summary": "摘要",
+    "common.time": "时间",
+    "common.details": "详情",
+    "common.showing": "显示",
+    "common.of": "共",
+    "common.prev": "上一页",
+    "common.next": "下一页",
+    "common.close": "关闭",
 
     "login.username": "用户名 / 邮箱",
     "login.nickname": "昵称",
@@ -75,6 +87,9 @@
     "dashboard.api_status": "API 状态",
     "dashboard.db_status": "数据库",
     "dashboard.active_modules": "活跃模组",
+    "dashboard.events.title": "系统事件",
+
+    "event.details": "事件详情",
 
     "scraper.modules": "抓取模组",
     "scraper.reload_modules": "重新扫描模组",
@@ -120,6 +135,7 @@
     "user_manager.error_delete_admin_role": "无法删除系统管理员角色",
     "user_manager.error_delete_self": "无法删除自己的账户",
 
+    "permission.system.status.view": "系统状态：查看",
     "permission.system.config.view": "系统配置：查看",
     "permission.system.config.edit": "系统配置：编辑",
     "permission.user_manager.view": "用户管理：查看",

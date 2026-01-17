@@ -1,6 +1,7 @@
 import os
 import sys
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
+from sqlalchemy.engine import URL
 from sqlalchemy.orm import sessionmaker, scoped_session, declarative_base
 from sqlalchemy.exc import OperationalError
 from contextlib import contextmanager
@@ -26,21 +27,40 @@ def get_db_url(db_name_suffix=""):
         else:
             return f"sqlite:///{DATA_DB_PATH}"
             
-    db_host = EnvManager.get_env("DB_HOST", "localhost")
-    db_port = EnvManager.get_env("DB_PORT", "5432")
-    db_user = EnvManager.get_env("DB_USER", "postgres")
-    db_password = EnvManager.get_env("DB_PASSWORD", "postgres")
-    db_name = EnvManager.get_env("DB_NAME", "utopia_daily")
+    db_host = EnvManager.get_env("DB_HOST", "")
+    db_port = EnvManager.get_env("DB_PORT", "")
+
+    try:
+        db_port = int(db_port) if db_port else None
+    except ValueError:
+        Log.w(TAG, f"Invalid DB_PORT: {db_port}, using default")
+        db_port = None
+
+    db_user = EnvManager.get_env("DB_USER", "")
+    db_password = EnvManager.get_env("DB_PASSWORD", "")
+    db_name = EnvManager.get_env("DB_NAME", "")
     
     target_db_name = f"{db_name}_{db_name_suffix}" if db_name_suffix else db_name
 
     if db_type == "MYSQL":
-        port_str = f":{db_port}" if db_port else ""
-        return f"mysql+pymysql://{db_user}:{db_password}@{db_host}{port_str}/{target_db_name}"
+        return URL.create(
+            drivername="mysql+pymysql",
+            username=db_user,
+            password=db_password,
+            host=db_host,
+            port=db_port,
+            database=target_db_name
+        ).render_as_string(hide_password=False)
     
     elif db_type == "POSTGRESQL":
-        port_str = f":{db_port}" if db_port else ""
-        return f"postgresql://{db_user}:{db_password}@{db_host}{port_str}/{target_db_name}"
+        return URL.create(
+            drivername="postgresql",
+            username=db_user,
+            password=db_password,
+            host=db_host,
+            port=db_port,
+            database=target_db_name
+        ).render_as_string(hide_password=False)
     
     else:
         Log.w(TAG, f"Unknown DB_TYPE: {db_type}, falling back to SQLITE")
@@ -87,6 +107,20 @@ class DatabaseManager:
             pool_pre_ping=True,
             echo=False
         )
+
+        # Enable WAL mode for SQLite
+        if "sqlite" in self.db_url:
+            @event.listens_for(self._engine, "connect")
+            def set_sqlite_pragma(dbapi_connection, connection_record):
+                cursor = dbapi_connection.cursor()
+                try:
+                    cursor.execute("PRAGMA journal_mode=WAL")
+                    cursor.execute("PRAGMA synchronous=NORMAL")
+                    Log.i(self.tag, "SQLite WAL mode enabled")
+                except Exception as e:
+                    Log.w(self.tag, f"Failed to set SQLite PRAGMA: {e}")
+                finally:
+                    cursor.close()
 
         if "sqlite" not in self.db_url:
             try:

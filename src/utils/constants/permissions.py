@@ -2,6 +2,8 @@ class Permissions:
     """
     System Permission Nodes
     """
+    
+    SYSTEM_STATUS_VIEW = "system.status.view"
 
     SYSTEM_CONFIG_VIEW = "system.config.view"
     SYSTEM_CONFIG_EDIT = "system.config.edit"
@@ -34,5 +36,6 @@ class Permissions:
     @classmethod
     def get_default_user(cls):
         return [
+            cls.SYSTEM_STATUS_VIEW,
             cls.USER_PUSH_SETTINGS
         ]

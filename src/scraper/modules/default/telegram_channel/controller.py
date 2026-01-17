@@ -3,7 +3,7 @@ from src.utils.logger.logger import Log
 from src.scraper.modules.base_module import BaseModule
 
 from datetime import datetime
-from typing import Tuple
+from typing import Tuple, Dict, Any
 
 TAG = "TELEGRAM_CHANNEL_MODULE_API"
 
@@ -48,6 +48,12 @@ class TelegramChannelModule(BaseModule):
             return True, "module.telegram_channel.test.success"
         else:
             return False, "module.telegram_channel.test.failed"
+
+    def test_config(self, config: Dict[str, Any]) -> Tuple[bool, str]:
+        """
+        Test the provided configuration.
+        """
+        return service.test_configuration(config)
 
     def execute_schedule_task(self, cron: str, task_key: str, timestamp: datetime) -> bool:
         return service.execute_schedule_task(self, cron, task_key, timestamp)

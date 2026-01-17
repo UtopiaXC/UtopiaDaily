@@ -2,23 +2,29 @@ import time
 import hashlib
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
-from src.database.models import User, UserSession, UserRole, UserLog
+from src.database.models import User, UserSession, UserRole
 from src.utils.security import crypto_manager
 from src.utils.security.jwt_util import create_access_token
 from src.web.dashboard.schemas import LoginRequest, LoginResponse, UserResponse
 from src.utils.security.captcha import verify_captcha
+from src.utils.event import EventManager
 
 class AuthService:
     def _record_attempt(self, db: Session, ip_address: str, username: str, success: bool, user_id: str = None):
-        log = UserLog(
-            user_id=user_id,
-            action="LOGIN_SUCCESS" if success else "LOGIN_FAILED",
-            status="SUCCESS" if success else "FAILURE",
-            ip_address=ip_address,
-            details={"username": username}
+        # Use EventManager instead of UserLog
+        level = EventManager.LEVEL_NORMAL if success else EventManager.LEVEL_WARNING
+        event_type = "login_success" if success else "login_failed"
+        summary = f"User {username} login {'success' if success else 'failed'}"
+        
+        EventManager.record(
+            level=level,
+            category=EventManager.CATEGORY_USER,
+            event_type=event_type,
+            summary=summary,
+            details={"username": username, "ip": ip_address},
+            source_id=user_id,
+            is_resolved=True # Login attempts are just records, not issues to resolve
         )
-        db.add(log)
-        db.commit()
 
     def login(self, db: Session, request: LoginRequest, ip_address: str, user_agent: str) -> LoginResponse:
         if not request.captcha_id or not request.captcha_code:

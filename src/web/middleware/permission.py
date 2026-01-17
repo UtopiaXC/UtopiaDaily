@@ -16,6 +16,9 @@ class PermissionRule:
 RULES = [
     PermissionRule(r"^/api/dashboard/auth/.*", ["GET", "POST"], "ALLOW"),
     PermissionRule(r"^/api/dashboard/layout/menu", ["GET"], "ALLOW"),
+    
+    # Events require SYSTEM_STATUS_VIEW
+    PermissionRule(r"^/api/dashboard/events.*", ["GET", "POST"], Permissions.SYSTEM_STATUS_VIEW),
 
     PermissionRule(r"^/api/dashboard/system-config.*", ["GET"], Permissions.SYSTEM_CONFIG_VIEW),
     PermissionRule(r"^/api/dashboard/system-config.*", ["PUT"], Permissions.SYSTEM_CONFIG_EDIT),

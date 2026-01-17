@@ -1,5 +1,7 @@
 from pydantic import BaseModel
-from typing import Optional, List, Dict, Any, Union
+from typing import Optional, List, Dict, Any, Union, Generic, TypeVar
+
+T = TypeVar('T')
 
 class LoginRequest(BaseModel):
     username: str
@@ -37,8 +39,12 @@ class ScraperModuleResponse(BaseModel):
 class ScraperModuleConfigItem(BaseModel):
     value: Any
     description: str
-    hint: str
-    regular: str
+    type: str = "text"
+    options: Optional[Union[List, Dict]] = None
+    hint: Optional[str] = None
+    regular: Optional[str] = None
+    source: str = "default"
+    is_override: bool = False
 
 class ScraperModuleTaskItem(BaseModel):
     cron: str
@@ -51,3 +57,21 @@ class ScraperModuleDetailResponse(ScraperModuleResponse):
 class TestModuleResponse(BaseModel):
     success: bool
     message: str
+
+class SystemEventResponse(BaseModel):
+    id: str
+    level: str
+    category: str
+    event_type: str
+    summary: str
+    details: Optional[Dict[str, Any]]
+    source_id: Optional[str]
+    is_resolved: bool
+    created_at: int
+    updated_at: Optional[int]
+
+class PaginatedResponse(BaseModel, Generic[T]):
+    items: List[T]
+    total: int
+    page: int
+    page_size: int

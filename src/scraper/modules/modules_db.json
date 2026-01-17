@@ -2,7 +2,9 @@
   "telegram_channel_scraper": {
     "config": {
       "channels": {
-        "value": ["tnews365"],
+        "value": [
+          "tnews365"
+        ],
         "value_type": "array",
         "description": "module.telegram_channel.config.channels.desc",
         "hint": "module.telegram_channel.config.channels.hint",

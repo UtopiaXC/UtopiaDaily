@@ -1,5 +1,5 @@
 from abc import ABC
-from typing import Any, List, Dict, Optional, Tuple
+from typing import Any, List, Dict, Optional, Tuple, Union
 from datetime import datetime
 
 class BaseModule(ABC):
@@ -16,11 +16,19 @@ class BaseModule(ABC):
     # Execute Interface (System API)
     # ==========================================
 
-    def set_module_config(self, key: str, description: str, value: str, value_type: str = "string", force_init: bool = False, hint: str = "", regular: str = ""):
+    def set_module_config(self, key: str, description: str, value: str, value_type: str = "string", options: Optional[Union[List, Dict]] = None, force_init: bool = False, hint: str = "", regular: str = ""):
         """
         Set module configuration parameter.
+        :param key: Configuration key
+        :param description: Human-readable description
+        :param value: Default value
+        :param value_type: Data type (text, number, switch, date, datetime, select, password, array)
+        :param options: Options for select/switch types (e.g., ["A", "B"] or {"A": "Label A"})
+        :param force_init: If True, resets the value to default even if it exists
+        :param hint: UI hint text
+        :param regular: Regex for validation
         """
-        return self._context.set_module_config(key, description, value, value_type, force_init, hint, regular)
+        return self._context.set_module_config(key, description, value, value_type, options, force_init, hint, regular)
 
     def get_module_config(self, key: str) -> str:
         """
@@ -87,6 +95,14 @@ class BaseModule(ABC):
         Returns a tuple (success, message).
         """
         return True, "No self-test implemented"
+
+    def test_config(self, config: Dict[str, Any]) -> Tuple[bool, str]:
+        """
+        Called to test if the provided configuration is valid.
+        :param config: A dictionary of configuration key-value pairs.
+        :return: (success, message)
+        """
+        return True, "Configuration valid"
 
     def execute_schedule_task(self, cron: str, task_key: str, timestamp: datetime) -> bool:
         """

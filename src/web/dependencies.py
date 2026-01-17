@@ -1,5 +1,16 @@
 from fastapi import Request, HTTPException, Depends
 from src.utils.constants.permissions import Permissions
+from src.database.connection import system_db_manager
+
+def get_db():
+    """
+    Dependency to get a database session.
+    """
+    session = system_db_manager.get_session()
+    try:
+        yield session
+    finally:
+        session.close()
 
 def get_current_user(request: Request):
     """

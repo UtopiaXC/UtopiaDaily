@@ -4,13 +4,13 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse, FileResponse
 from contextlib import asynccontextmanager
 import os
-import sys
 from src.utils.logger.logger import Log
 from src.web.dashboard.routers import auth as dashboard_auth
 from src.web.dashboard.routers import layout as dashboard_layout
 from src.web.dashboard.routers import system_config as dashboard_sys_config
 from src.web.dashboard.routers import user_manager as dashboard_user_manager
 from src.web.dashboard.routers import scraper_modules as dashboard_scraper_modules
+from src.web.dashboard.routers import events as dashboard_events
 from src.web.newspaper.routers import news as newspaper_news
 from src.web import common_routers
 from src.web.middleware.security import SecurityMiddleware
@@ -64,6 +64,7 @@ def create_app() -> FastAPI:
     app.include_router(dashboard_sys_config.router)
     app.include_router(dashboard_user_manager.router)
     app.include_router(dashboard_scraper_modules.router)
+    app.include_router(dashboard_events.router, prefix="/api/dashboard")
 
     # Register Newspaper Routers
     app.include_router(newspaper_news.router)

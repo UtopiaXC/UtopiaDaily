@@ -139,14 +139,23 @@
                             </button>
                         </div>
 
-                        <!-- General Config -->
+                        <!-- General Config (Default) -->
                         <div v-if="activeConfigTab === 'general'" class="space-y-6">
-                            <!-- Placeholder for General Config -->
-                            <div class="text-gray-500 dark:text-gray-400 italic text-center py-8 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-lg">
-                                General Configuration Placeholder
+                            <div v-if="getConfigsBySource('default').length === 0" class="text-center py-8 text-gray-400">
+                                {{ t('scraper.no_config') }}
                             </div>
 
-                            <div class="flex justify-end">
+                            <div v-else class="grid grid-cols-1 gap-6">
+                                <div v-for="cfg in getConfigsBySource('default')" :key="cfg.key" class="space-y-2">
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                        {{ t(cfg.description) }}
+                                    </label>
+                                    <component :is="getInputComponent(cfg.type)" :cfg="cfg" v-model="configForm[cfg.key]" :t="t" />
+                                    <p v-if="cfg.hint" class="text-xs text-gray-500 dark:text-gray-400">{{ t(cfg.hint) }}</p>
+                                </div>
+                            </div>
+
+                            <div class="flex justify-end pt-4" v-if="getConfigsBySource('default').length > 0">
                                 <button
                                     @click="saveConfig"
                                     :disabled="saving"
@@ -160,12 +169,21 @@
 
                         <!-- Custom Config -->
                         <div v-if="activeConfigTab === 'custom'" class="space-y-6">
-                            <!-- Placeholder for Custom Config -->
-                            <div class="text-gray-500 dark:text-gray-400 italic text-center py-8 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-lg">
-                                Custom Configuration Placeholder
+                            <div v-if="getConfigsBySource('custom').length === 0" class="text-center py-8 text-gray-400">
+                                {{ t('scraper.no_config') }}
                             </div>
 
-                            <div class="flex justify-end gap-3">
+                            <div v-else class="grid grid-cols-1 gap-6">
+                                <div v-for="cfg in getConfigsBySource('custom')" :key="cfg.key" class="space-y-2">
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                        {{ t(cfg.description) }}
+                                    </label>
+                                    <component :is="getInputComponent(cfg.type)" :cfg="cfg" v-model="configForm[cfg.key]" :t="t" />
+                                    <p v-if="cfg.hint" class="text-xs text-gray-500 dark:text-gray-400">{{ t(cfg.hint) }}</p>
+                                </div>
+                            </div>
+
+                            <div class="flex justify-end gap-3 pt-4" v-if="getConfigsBySource('custom').length > 0">
                                 <button
                                     @click="testConfig"
                                     :disabled="testingConfig"
@@ -226,6 +244,132 @@
 
 <script>
 import http from '../../utils/http';
+import { h } from 'vue';
+
+// Inline components for inputs
+const TextInput = {
+    props: ['modelValue', 'cfg', 't'],
+    emits: ['update:modelValue'],
+    template: `
+        <input
+            :type="cfg.type === 'password' ? 'password' : 'text'"
+            :value="modelValue"
+            @input="$emit('update:modelValue', $event.target.value)"
+            class="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:text-white"
+            :placeholder="t(cfg.hint)"
+        >
+    `
+};
+
+const NumberInput = {
+    props: ['modelValue', 'cfg', 't'],
+    emits: ['update:modelValue'],
+    template: `
+        <input
+            type="number"
+            :step="cfg.type === 'float' || cfg.type === 'double' ? 'any' : '1'"
+            :value="modelValue"
+            @input="$emit('update:modelValue', Number($event.target.value))"
+            class="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:text-white"
+            :placeholder="t(cfg.hint)"
+        >
+    `
+};
+
+const SwitchInput = {
+    props: ['modelValue', 'cfg', 't'],
+    emits: ['update:modelValue'],
+    template: `
+        <div class="flex items-center">
+            <button
+                @click="$emit('update:modelValue', !modelValue)"
+                class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:ring-offset-gray-800"
+                :class="modelValue ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'"
+            >
+                <span
+                    class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
+                    :class="modelValue ? 'translate-x-6' : 'translate-x-1'"
+                />
+            </button>
+            <span class="ml-3 text-sm text-gray-500 dark:text-gray-400">{{ modelValue ? t('common.active') : t('common.inactive') }}</span>
+        </div>
+    `
+};
+
+const SelectInput = {
+    props: ['modelValue', 'cfg', 't'],
+    emits: ['update:modelValue'],
+    template: `
+        <select
+            :value="modelValue"
+            @change="$emit('update:modelValue', $event.target.value)"
+            class="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:text-white"
+        >
+            <option v-for="opt in (Array.isArray(cfg.options) ? cfg.options : Object.keys(cfg.options))" :key="opt" :value="opt">
+                {{ Array.isArray(cfg.options) ? opt : cfg.options[opt] }}
+            </option>
+        </select>
+    `
+};
+
+const ArrayInput = {
+    props: ['modelValue', 'cfg', 't'],
+    emits: ['update:modelValue'],
+    data() {
+        return {
+            items: Array.isArray(this.modelValue) ? [...this.modelValue] : ['']
+        }
+    },
+    watch: {
+        modelValue(newVal) {
+            if (Array.isArray(newVal)) {
+                // Only update if length changed or content significantly different to avoid cursor jump issues
+                // For simplicity, we just update.
+                this.items = [...newVal];
+                if (this.items.length === 0) this.items.push('');
+            }
+        }
+    },
+    methods: {
+        updateItem(index, value) {
+            this.items[index] = value;
+            this.emitUpdate();
+        },
+        addItem(index) {
+            this.items.splice(index + 1, 0, '');
+            this.emitUpdate();
+        },
+        removeItem(index) {
+            this.items.splice(index, 1);
+            if (this.items.length === 0) {
+                this.items.push('');
+            }
+            this.emitUpdate();
+        },
+        emitUpdate() {
+            this.$emit('update:modelValue', [...this.items]);
+        }
+    },
+    template: `
+        <div class="space-y-2">
+            <div v-for="(item, index) in items" :key="index" class="flex gap-2">
+                <input
+                    type="text"
+                    :value="item"
+                    @input="updateItem(index, $event.target.value)"
+                    class="flex-1 px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:text-white"
+                    :placeholder="t(cfg.hint)"
+                >
+                <button @click="addItem(index)" class="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors" title="Add">
+                    <span class="material-icons">add</span>
+                </button>
+                <button @click="removeItem(index)" class="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors" title="Remove">
+                    <span class="material-icons">remove</span>
+                </button>
+            </div>
+        </div>
+    `
+};
 
 export default {
     props: ['t'],
@@ -239,11 +383,11 @@ export default {
             showWarningModal: false,
             pendingEnableModule: null,
 
-            // New states
             activeConfigTab: 'general',
             enabling: false,
             testingConfig: false,
-            saving: false
+            saving: false,
+            configForm: {}
         }
     },
     async created() {
@@ -292,10 +436,27 @@ export default {
         async selectModule(mod) {
             this.selectedModule = mod;
             this.moduleDetail = null;
-            this.activeConfigTab = 'general'; // Reset tab
+            this.activeConfigTab = 'general';
+            this.configForm = {};
+
             try {
                 const res = await http.get(`/api/dashboard/scraper/modules/${mod.module_id}`);
                 this.moduleDetail = res.data;
+
+                // Initialize form data
+                if (this.moduleDetail.config) {
+                    Object.keys(this.moduleDetail.config).forEach(key => {
+                        const cfg = this.moduleDetail.config[key];
+                        // Handle array type: ensure it's an array
+                        if (cfg.type === 'array') {
+                            this.configForm[key] = Array.isArray(cfg.value) ? cfg.value : [];
+                            if (this.configForm[key].length === 0) this.configForm[key].push('');
+                        } else {
+                            this.configForm[key] = cfg.value;
+                        }
+                    });
+                }
+
                 const idx = this.modules.findIndex(m => m.module_id === mod.module_id);
                 if (idx !== -1) {
                     this.modules[idx] = { ...this.modules[idx], ...res.data };
@@ -304,16 +465,33 @@ export default {
                 this.showToast('Failed to load module details', 'error');
             }
         },
+        getConfigsBySource(source) {
+            if (!this.moduleDetail || !this.moduleDetail.config) return [];
+            return Object.keys(this.moduleDetail.config)
+                .map(key => ({ key, ...this.moduleDetail.config[key] }))
+                .filter(cfg => cfg.source === source);
+        },
+        getInputComponent(type) {
+            switch (type) {
+                case 'number':
+                case 'int':
+                case 'float':
+                case 'double':
+                    return NumberInput;
+                case 'switch': return SwitchInput;
+                case 'select': return SelectInput;
+                case 'array': return ArrayInput;
+                default: return TextInput;
+            }
+        },
         async toggleEnable() {
             if (!this.selectedModule || this.enabling) return;
 
             if (this.selectedModule.is_enable) {
-                // Disabling
                 await this.executeToggle(this.selectedModule);
                 return;
             }
 
-            // Enabling
             if (this.selectedModule.source === 'external') {
                 this.pendingEnableModule = this.selectedModule;
                 this.showWarningModal = true;
@@ -348,7 +526,6 @@ export default {
 
                 await this.selectModule(mod);
             } catch (err) {
-                // If backend returns error (e.g. test failed), show it
                 const errorMsg = err.response && err.response.data && err.response.data.detail
                     ? err.response.data.detail
                     : err.message;
@@ -361,19 +538,93 @@ export default {
         },
         async testConfig() {
             this.testingConfig = true;
-            // Mock delay
-            setTimeout(() => {
+
+            // Prepare payload
+            const payload = {};
+            const currentConfigs = this.getConfigsBySource(this.activeConfigTab === 'general' ? 'default' : 'custom');
+            currentConfigs.forEach(cfg => {
+                let val = this.configForm[cfg.key];
+                if (cfg.type === 'array' && Array.isArray(val)) {
+                    val = val.filter(item => item !== '');
+                }
+                payload[cfg.key] = val;
+            });
+
+            try {
+                const res = await http.post(`/api/dashboard/scraper/modules/${this.selectedModule.module_id}/test_config`, payload);
+                if (res.data.success) {
+                    this.showToast(this.t('scraper.test_passed'), 'success');
+                } else {
+                    this.showToast(this.t('scraper.test_failed') + ': ' + res.data.message, 'error');
+                }
+            } catch (err) {
+                const errorMsg = err.response && err.response.data && err.response.data.detail
+                    ? err.response.data.detail
+                    : err.message;
+                this.showToast(this.t('common.error') + ': ' + errorMsg, 'error');
+            } finally {
                 this.testingConfig = false;
-                this.showToast('Config test passed (Mock)', 'success');
-            }, 1000);
+            }
         },
         async saveConfig() {
+            if (!this.selectedModule) return;
+
+            // Validation
+            const currentConfigs = this.getConfigsBySource(this.activeConfigTab === 'general' ? 'default' : 'custom');
+            for (const cfg of currentConfigs) {
+                const val = this.configForm[cfg.key];
+
+                // Type Validation
+                if (cfg.type === 'number' || cfg.type === 'int' || cfg.type === 'float' || cfg.type === 'double') {
+                    if (val !== '' && val !== null && isNaN(Number(val))) {
+                        this.showToast(`${this.t(cfg.description)} must be a number`, 'error');
+                        return;
+                    }
+                }
+
+                // Regex Validation
+                if (cfg.regular) {
+                    try {
+                        const regex = new RegExp(cfg.regular);
+                        if (!regex.test(String(val))) {
+                            this.showToast(`${this.t(cfg.description)} format is invalid`, 'error');
+                            return;
+                        }
+                    } catch (e) {
+                        console.warn("Invalid regex in config:", cfg.regular);
+                    }
+                }
+            }
+
             this.saving = true;
-            // Mock delay
-            setTimeout(() => {
+
+            try {
+                // Prepare payload
+                const payload = {};
+                currentConfigs.forEach(cfg => {
+                    let val = this.configForm[cfg.key];
+
+                    if (cfg.type === 'array' && Array.isArray(val)) {
+                        val = val.filter(item => item !== '');
+                    }
+
+                    payload[cfg.key] = val;
+                });
+
+                await http.post(`/api/dashboard/scraper/modules/${this.selectedModule.module_id}/config`, payload);
+                this.showToast(this.t('common.saved_success'), 'success');
+
+                // Don't reload the whole module to avoid flickering
+                // Just update local data if needed, but since we just saved what we have, it's fine.
+
+            } catch (err) {
+                const errorMsg = err.response && err.response.data && err.response.data.detail
+                    ? err.response.data.detail
+                    : err.message;
+                this.showToast(this.t('common.saved_failed') + errorMsg, 'error');
+            } finally {
                 this.saving = false;
-                this.showToast('Config saved (Mock)', 'success');
-            }, 1000);
+            }
         }
     }
 }

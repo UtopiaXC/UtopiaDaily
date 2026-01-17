@@ -23,7 +23,7 @@ class User(BaseModel):
     role_id = Column(String(36), ForeignKey('user_role.id'), nullable=False)
     role = relationship("UserRole", back_populates="users")
     sessions = relationship("UserSession", back_populates="user", cascade="all, delete-orphan")
-    logs = relationship("UserLog", back_populates="user")
+    # logs = relationship("UserLog", back_populates="user") # Deprecated
     push_config = relationship("UserPushConfig", back_populates="user", uselist=False, cascade="all, delete-orphan")
 
 class UserSession(BaseModel):
@@ -37,13 +37,4 @@ class UserSession(BaseModel):
     is_valid = Column(Boolean, default=True)
     user = relationship("User", back_populates="sessions")
 
-class UserLog(BaseModel):
-    __tablename__ = 'user_log'
-
-    user_id = Column(String(36), ForeignKey('user.id'), nullable=True)
-    action = Column(String(50), nullable=False)
-    status = Column(String(20), nullable=False)
-    ip_address = Column(String(45), nullable=True)
-    details = Column(JSON, nullable=True)
-
-    user = relationship("User", back_populates="logs")
+# UserLog class removed. Use SystemEvent instead.

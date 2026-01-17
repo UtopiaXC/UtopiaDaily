@@ -7,13 +7,14 @@ import traceback
 import json
 import subprocess
 from datetime import datetime
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Union, Tuple
 from croniter import croniter
 
 from src.utils.logger.logger import Log
 from src.utils.i18n import i18n
 from src.database.connection import system_session_scope
-from src.database.models import ScraperModule
+from src.database.models import ScraperModule, ScraperModuleConfig
+from src.utils.event import EventManager
 
 TAG = "MODULE_MANAGER"
 DB_FILE = "modules_db.json"
@@ -23,8 +24,8 @@ class ModuleContext:
         self.module_id = module_id
         self._manager = manager
 
-    def set_module_config(self, key, description, value, value_type, force_init, hint, regular):
-        self._manager.db_set_config(self.module_id, key, description, value, value_type, force_init, hint, regular)
+    def set_module_config(self, key, description, value, value_type, options, force_init, hint, regular):
+        self._manager.db_set_config(self.module_id, key, description, value, value_type, options, force_init, hint, regular)
 
     def get_module_config(self, key):
         return self._manager.db_get_config(self.module_id, key)
@@ -231,28 +232,69 @@ class ModuleManager:
         if module_id not in self.db:
             self.db[module_id] = {"config": {}, "tasks": {}, "enabled": False}
 
-    def db_set_config(self, module_id, key, description, value, value_type, force_init, hint, regular):
-        self._ensure_db_entry(module_id)
-        config_store = self.db[module_id]["config"]
-        if key not in config_store or force_init:
-            config_store[key] = {
-                "value": value,
-                "value_type": value_type,
-                "description": description,
-                "hint": hint,
-                "regular": regular
-            }
-        self._save_db()
+    def db_set_config(self, module_id, key, description, value, value_type, options, force_init, hint, regular):
+        with system_session_scope() as session:
+            config = session.query(ScraperModuleConfig).filter_by(module_id=module_id, config_key=key).first()
+            
+            if config:
+                if force_init:
+                    # Reset to default
+                    config.description = description
+                    config.type = value_type
+                    config.options = options
+                    config.value = value
+                    config.hint = hint
+                    config.regex = regular
+                    config.source = "custom" # Changed from default to custom
+                    # We don't change is_override here usually, or maybe reset it?
+                    # config.is_override = False 
+                    Log.i(TAG, f"[{module_id}] Config '{key}' reset to default.")
+                else:
+                    # Update metadata but keep value if it exists (unless it's a new field)
+                    # Actually, if it exists, we usually don't want to overwrite the value 
+                    # if the user has customized it. But here we are setting the "definition".
+                    # If the code calls set_module_config, it's usually defining what SHOULD be there.
+                    
+                    # Update definition fields
+                    config.description = description
+                    config.type = value_type
+                    config.options = options
+                    config.hint = hint
+                    config.regex = regular
+                    
+                    # If value is None (never set), set it.
+                    if config.value is None:
+                        config.value = value
+            else:
+                # Create new
+                new_config = ScraperModuleConfig(
+                    module_id=module_id,
+                    config_key=key,
+                    description=description,
+                    type=value_type,
+                    options=options,
+                    value=value,
+                    hint=hint,
+                    regex=regular,
+                    source="custom", # Changed from default to custom
+                    is_override=False
+                )
+                session.add(new_config)
+                Log.i(TAG, f"[{module_id}] Config '{key}' initialized.")
 
     def db_get_config(self, module_id, key):
-        self._ensure_db_entry(module_id)
-        cfg = self.db[module_id]["config"].get(key)
-        return cfg["value"] if cfg else None
+        with system_session_scope() as session:
+            config = session.query(ScraperModuleConfig).filter_by(module_id=module_id, config_key=key).first()
+            if config:
+                return config.value
+            return None
 
     def db_drop_config(self, module_id, key):
-        if module_id in self.db and key in self.db[module_id]["config"]:
-            del self.db[module_id]["config"][key]
-            self._save_db()
+        with system_session_scope() as session:
+            config = session.query(ScraperModuleConfig).filter_by(module_id=module_id, config_key=key).first()
+            if config:
+                session.delete(config)
+                Log.i(TAG, f"[{module_id}] Config '{key}' deleted.")
 
     def db_set_task(self, module_id, key, description, cron, force_init):
         self._ensure_db_entry(module_id)
@@ -309,6 +351,22 @@ class ModuleManager:
                     # Check if module ID already exists (from previous source)
                     if module_id in found_modules:
                         Log.w(TAG, f"Duplicate module ID '{module_id}' found in {source_type}. Ignoring {module_path}. Keeping version from {found_modules[module_id]['source']}.")
+                        
+                        # Record event
+                        EventManager.record(
+                            level=EventManager.LEVEL_WARNING,
+                            category=EventManager.CATEGORY_MODULE,
+                            event_type="module_conflict",
+                            summary=f"Duplicate module ID detected: {module_id}",
+                            details={
+                                "kept_path": found_modules[module_id]["path"],
+                                "ignored_path": module_path,
+                                "kept_source": found_modules[module_id]["source"],
+                                "ignored_source": source_type
+                            },
+                            source_id=module_id,
+                            is_resolved=False
+                        )
                         continue
 
                     found_modules[module_id] = {
@@ -512,6 +570,17 @@ class ModuleManager:
 
     def notify_module_disabled(self, module_id, reason):
         Log.e(TAG, f"SYSTEM ALERT: Module {module_id} disabled due to: {reason}")
+        
+        EventManager.record(
+            level=EventManager.LEVEL_CRITICAL,
+            category=EventManager.CATEGORY_MODULE,
+            event_type="module_crashed",
+            summary=f"Module {module_id} disabled due to crash",
+            details={"reason": reason},
+            source_id=module_id,
+            is_resolved=False
+        )
+
         self.disable_module(module_id)
 
     def test_module(self, module_id):
@@ -562,3 +631,48 @@ class ModuleManager:
         except Exception as e:
             Log.e(TAG, f"Error testing module {module_id}", error=e)
             return False, str(e)
+
+    def test_module_config(self, module_id: str, config: Dict[str, Any]) -> Tuple[bool, str]:
+        """
+        Test if the provided configuration is valid for the module.
+        """
+        # Try to use running instance first
+        if module_id in self.runners and self.runners[module_id].is_alive():
+            runner = self.runners[module_id]
+            if runner.module_instance:
+                try:
+                    if hasattr(runner.module_instance, 'test_config'):
+                        return runner.module_instance.test_config(config)
+                    else:
+                        return True, "Module does not support config testing (assumed valid)"
+                except Exception as e:
+                    return False, f"Config test error: {str(e)}"
+
+        # If not running, load instance temporarily
+        modules = self.scan_modules()
+        if module_id not in modules:
+            return False, "Module not found"
+        try:
+            module_info = modules[module_id]
+            module_path = module_info["path"]
+            module_dir = os.path.dirname(module_path)
+            if module_dir not in sys.path:
+                sys.path.insert(0, module_dir)
+            libs_dir = os.path.join(module_dir, "libs")
+            if os.path.exists(libs_dir) and libs_dir not in sys.path:
+                sys.path.insert(0, libs_dir)
+            spec = importlib.util.spec_from_file_location(f"test_cfg_{module_id}", module_path)
+            if spec is None:
+                return False, f"Could not load spec for {module_path}"
+            module_lib = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module_lib)
+            if not hasattr(module_lib, 'create_module'):
+                return False, "Module missing 'create_module' factory function"
+            ctx = ModuleContext(module_id, self)
+            instance = module_lib.create_module(ctx)
+            if hasattr(instance, 'test_config'):
+                return instance.test_config(config)
+            else:
+                return True, "Module does not support config testing (assumed valid)"
+        except Exception as e:
+            return False, f"Config test error: {str(e)}"

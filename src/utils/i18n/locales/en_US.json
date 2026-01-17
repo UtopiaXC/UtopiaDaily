@@ -40,6 +40,18 @@
     "common.warning": "Warning",
     "common.continue": "Continue",
     "common.enabling": "Enabling...",
+    "common.all_levels": "All Levels",
+    "common.all_categories": "All Categories",
+    "common.level": "Level",
+    "common.category": "Category",
+    "common.summary": "Summary",
+    "common.time": "Time",
+    "common.details": "Details",
+    "common.showing": "Showing",
+    "common.of": "of",
+    "common.prev": "Prev",
+    "common.next": "Next",
+    "common.close": "Close",
 
     "login.username": "Username / Email",
     "login.nickname": "Nickname",
@@ -75,6 +87,9 @@
     "dashboard.api_status": "API Status",
     "dashboard.db_status": "Database",
     "dashboard.active_modules": "Active Modules",
+    "dashboard.events.title": "System Events",
+
+    "event.details": "Event Details",
 
     "scraper.modules": "Scraper Modules",
     "scraper.reload_modules": "Reload Modules",
@@ -120,6 +135,7 @@
     "user_manager.error_delete_admin_role": "Cannot delete system admin role",
     "user_manager.error_delete_self": "Cannot delete your own account",
 
+    "permission.system.status.view": "System Status: View",
     "permission.system.config.view": "System Config: View",
     "permission.system.config.edit": "System Config: Edit",
     "permission.user_manager.view": "User Manager: View",

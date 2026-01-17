@@ -1,5 +1,3 @@
-import sys
-
 import jwt
 import time
 from typing import Optional, Dict

@@ -35,11 +35,17 @@
                 </div>
             </div>
         </div>
+
+        <!-- Event Table -->
+        <EventTable :t="t" />
     </div>
 </template>
 
 <script>
+import EventTable from './components/EventTable.vue';
+
 export default {
+    components: { EventTable },
     props: ['t']
 }
 </script>

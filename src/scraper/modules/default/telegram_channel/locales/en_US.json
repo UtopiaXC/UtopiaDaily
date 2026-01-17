@@ -2,7 +2,7 @@
     "module.telegram_channel.name": "Telegram Public Channel Scraper",
     "module.telegram_channel.description": "This module scrapes public Telegram channels for news and updates by web version",
     "module.telegram_channel.config.channels.desc": "Telegram channel list (comma separated)",
-    "module.telegram_channel.config.channels.hint": "Enter channel URLs or usernames, separated by commas",
+    "module.telegram_channel.config.channels.hint": "Enter channel URLs or usernames",
     "module.telegram_channel.config.lookback.desc": "Look back days",
     "module.telegram_channel.config.lookback.hint": "Number of days to look back for messages",
     "module.telegram_channel.config.timezone.desc": "Timezone Offset",

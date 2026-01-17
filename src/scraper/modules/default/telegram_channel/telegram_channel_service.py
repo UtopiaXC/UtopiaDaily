@@ -9,7 +9,7 @@ TAG = "TELEGRAM_CHANNEL_MODULE_SERVICE"
 channel_conf = {
     "key": "channels",
     "description": "module.telegram_channel.config.channels.desc",
-    "value": "",
+    "value": [],
     "force_init": False,
     "hint": "module.telegram_channel.config.channels.hint",
     "regular": ".*",
@@ -18,7 +18,7 @@ channel_conf = {
 lookback_conf = {
     "key": "lookback_days",
     "description": "module.telegram_channel.config.lookback.desc",
-    "value": "3",
+    "value": 3,
     "force_init": False,
     "hint": "module.telegram_channel.config.lookback.hint",
     "regular": "^\\d+$",
@@ -28,7 +28,7 @@ lookback_conf = {
 timezone_conf = {
     "key": "timezone",
     "description": "module.telegram_channel.config.timezone.desc",
-    "value": "0",
+    "value": 0,
     "force_init": False,
     "hint": "module.telegram_channel.config.timezone.hint",
     "regular": "^\\d+$",
@@ -38,7 +38,7 @@ timezone_conf = {
 max_pages_conf = {
     "key": "max_pages",
     "description": "module.telegram_channel.config.max_pages.desc",
-    "value": "5",
+    "value": 5,
     "force_init": False,
     "hint": "module.telegram_channel.config.max_pages.hint",
     "regular": "^\\d+$",
@@ -71,6 +71,39 @@ def test_telegram_access():
         Log.e(TAG, e)
         return False
 
+def test_configuration(config):
+    channels = config.get("channels", [])
+    if not channels:
+        # It's valid to have no channels, just nothing to test
+        return True, "No channels configured"
+    
+    if isinstance(channels, str):
+        # Fallback for legacy string input
+        channels = [c.strip() for c in channels.split('\n') if c.strip()]
+    
+    failed_channels = []
+    for channel in channels:
+        channel = str(channel).strip()
+        if not channel: continue
+        
+        # Normalize URL logic same as execute_schedule_task
+        if not channel.startswith("http"):
+            if channel.startswith("t.me/"):
+                channel = f"https://{channel}"
+            else:
+                channel = f"https://t.me/s/{channel}"
+        
+        # test_connection handles /s/ replacement internally if needed, 
+        # but let's be consistent
+        
+        success, msg = scraper.test_connection(channel)
+        if not success:
+            failed_channels.append(channel)
+            
+    if failed_channels:
+        return False, f"Failed to connect to: {', '.join(failed_channels)}"
+    
+    return True, "All channels accessible"
 
 def execute_schedule_task(module, cron: str, task_key: str, timestamp: datetime):
     if task_key == task_fetch.get("key"):
@@ -80,8 +113,14 @@ def execute_schedule_task(module, cron: str, task_key: str, timestamp: datetime)
             Log.w(TAG, "No channels configured")
             return False
 
+        # Ensure channels is list
+        if isinstance(channels, str):
+             channels = [c.strip() for c in channels.split('\n') if c.strip()]
+
         for channel in channels:
-            channel = channel.strip()
+            channel = str(channel).strip()
+            if not channel: continue
+
             if not channel.startswith("http"):
                 if channel.startswith("t.me/"):
                     channel = f"https://{channel}"
