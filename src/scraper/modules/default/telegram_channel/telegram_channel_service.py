@@ -31,7 +31,7 @@ timezone_conf = {
     "value": 0,
     "force_init": False,
     "hint": "module.telegram_channel.config.timezone.hint",
-    "regular": "^\\d+$",
+    "regular": "^-?\\d+$",
     "value_type": "int"
 }
 
@@ -72,18 +72,30 @@ def test_telegram_access():
         Log.e(TAG, e)
         return False
 
-def test_configuration(config):
+def test_configuration(module, config):
     channels = config.get("channels", [])
     if not channels:
         return True, "No channels configured"
     
     if isinstance(channels, str):
         channels = [c.strip() for c in channels.split('\n') if c.strip()]
-    
+
+    existing_channels_raw = module.get_module_config("channels")
+    existing_channels = []
+    if existing_channels_raw:
+        if isinstance(existing_channels_raw, str):
+             existing_channels = [c.strip() for c in existing_channels_raw.split('\n') if c.strip()]
+        elif isinstance(existing_channels_raw, list):
+             existing_channels = existing_channels_raw
+
     failed_channels = []
     for channel in channels:
         channel = str(channel).strip()
         if not channel: continue
+
+        if channel in existing_channels:
+            continue
+
         if not channel.startswith("http"):
             if channel.startswith("t.me/"):
                 channel = f"https://{channel}"
@@ -106,7 +118,6 @@ def execute_schedule_task(module, cron: str, task_key: str, timestamp: datetime)
             Log.w(TAG, "No channels configured")
             return False
 
-        # Ensure channels is list
         if isinstance(channels, str):
              channels = [c.strip() for c in channels.split('\n') if c.strip()]
 

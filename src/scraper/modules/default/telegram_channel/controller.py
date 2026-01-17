@@ -51,7 +51,7 @@ class TelegramChannelModule(BaseModule):
             return False, "module.telegram_channel.test.failed"
 
     def test_config(self, config: Dict[str, Any]) -> Tuple[bool, str]:
-        return service.test_configuration(config)
+        return service.test_configuration(self, config)
 
     def execute_schedule_task(self, cron: str, task_key: str, timestamp: datetime) -> bool:
         return service.execute_schedule_task(self, cron, task_key, timestamp)
