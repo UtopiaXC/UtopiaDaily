@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, BackgroundTasks
 from sqlalchemy.orm import Session
 from typing import List, Optional
 import json
@@ -7,6 +7,8 @@ from src.database.connection import system_db_manager
 from src.database.models import SystemConfig
 from src.utils.logger.logger import Log
 from src.utils.event import EventManager
+from src.utils.classification.classification import list_local_models
+from src.utils.classification.download_model import download_model_from_hf, get_default_models_json
 
 router = APIRouter(prefix="/api/dashboard/system-config", tags=["System Config"])
 
@@ -26,6 +28,9 @@ class ConfigItem(BaseModel):
 class ConfigUpdate(BaseModel):
     value: str
 
+class ModelDownloadRequest(BaseModel):
+    repo_id: str
+
 def get_db():
     db = system_db_manager.get_session()
     try:
@@ -41,7 +46,15 @@ async def get_configs(tab: Optional[str] = None, group: Optional[str] = None, db
     if group:
         query = query.filter(SystemConfig.group == group)
     query = query.order_by(SystemConfig.order.asc())
-    return query.all()
+    
+    configs = query.all()
+    
+    # Dynamic options for ai_model
+    for conf in configs:
+        if conf.key == "ai_model":
+            conf.options = list_local_models()
+            
+    return configs
 
 @router.put("/{key}")
 async def update_config(key: str, update: ConfigUpdate, req: Request, db: Session = Depends(get_db)):
@@ -98,3 +111,50 @@ async def update_config(key: str, update: ConfigUpdate, req: Request, db: Sessio
     )
 
     return {"status": "success", "key": key, "new_value": update.value}
+
+@router.get("/ai-models")
+async def get_ai_models():
+    return list_local_models()
+
+@router.get("/default-models")
+async def get_default_models():
+    return get_default_models_json()
+
+@router.post("/download-model")
+async def download_model(request: ModelDownloadRequest, req: Request):
+    current_user = getattr(req.state, "user", None)
+    
+    try:
+        # Synchronous download as requested
+        success, msg = download_model_from_hf(request.repo_id)
+        
+        if success:
+            EventManager.record(
+                level=EventManager.LEVEL_NORMAL,
+                category=EventManager.CATEGORY_SYSTEM,
+                event_type="model_download_success",
+                summary=f"Model downloaded: {request.repo_id}",
+                source_id=current_user.id if current_user else None
+            )
+            return {"status": "success", "message": msg}
+        else:
+            EventManager.record(
+                level=EventManager.LEVEL_ERROR,
+                category=EventManager.CATEGORY_SYSTEM,
+                event_type="model_download_failed",
+                summary=f"Model download failed: {request.repo_id}",
+                details={"error": msg},
+                source_id=current_user.id if current_user else None
+            )
+            raise HTTPException(status_code=500, detail=f"Download failed: {msg}")
+            
+    except Exception as e:
+         EventManager.record(
+            level=EventManager.LEVEL_ERROR,
+            category=EventManager.CATEGORY_SYSTEM,
+            event_type="model_download_failed",
+            summary=f"Model download failed: {request.repo_id}",
+            details={"error": str(e)},
+            source_id=current_user.id if current_user else None
+        )
+         raise HTTPException(status_code=500, detail=str(e))

@@ -21,9 +21,8 @@ RULES = [
     PermissionRule(r"^/api/dashboard/events.*", ["GET", "POST"], Permissions.SYSTEM_STATUS_VIEW),
 
     PermissionRule(r"^/api/dashboard/system-config.*", ["GET"], Permissions.SYSTEM_CONFIG_VIEW),
-    PermissionRule(r"^/api/dashboard/system-config.*", ["PUT"], Permissions.SYSTEM_CONFIG_EDIT),
+    PermissionRule(r"^/api/dashboard/system-config.*", ["PUT", "POST"], Permissions.SYSTEM_CONFIG_EDIT),
 
-    PermissionRule(r"^/api/dashboard/user-manager/permissions", ["GET"], Permissions.USER_MANAGER_VIEW),
     PermissionRule(r"^/api/dashboard/user-manager.*", ["GET"], Permissions.USER_MANAGER_VIEW),
     PermissionRule(r"^/api/dashboard/user-manager.*", ["POST", "PUT", "DELETE"], Permissions.USER_MANAGER_EDIT),
 

@@ -65,27 +65,14 @@ DEFAULT_CONFIGS = [
     # AI Configs
     {
         "key": "ai_model",
-        "value": "sentence-transformers/all-MiniLM-L6-v2",
-        "default": "sentence-transformers/all-MiniLM-L6-v2",
+        "value": "None",
+        "default": "None",
         "description": "config.ai.model",
         "hint": "config.ai.model.hint",
         "tab": "ai_config",
         "group": "basic_ai",
-        "type": "select",
-        "options": [
-            "albert-base-v1", "albert-base-v2", "albert-large-v1", "albert-large-v2", "albert-xlarge-v1", "albert-xlarge-v2", "albert-xxlarge-v1", "albert-xxlarge-v2",
-            "bert-base-cased-finetuned-mrpc", "bert-base-cased", "bert-base-chinese", "bert-base-german-cased", "bert-base-german-dbmdz-cased", "bert-base-german-dbmdz-uncased",
-            "bert-base-multilingual-cased", "bert-base-multilingual-uncased", "bert-base-uncased", "bert-large-cased-whole-word-masking-finetuned-squad",
-            "bert-large-cased-whole-word-masking", "bert-large-cased", "bert-large-uncased-whole-word-masking-finetuned-squad", "bert-large-uncased-whole-word-masking",
-            "bert-large-uncased", "camembert-base", "ctrl", "distilbert-base-cased-distilled-squad", "distilbert-base-cased", "distilbert-base-german-cased",
-            "distilbert-base-multilingual-cased", "distilbert-base-uncased-distilled-squad", "distilbert-base-uncased-finetuned-sst-2-english", "distilbert-base-uncased",
-            "distilgpt2", "distilroberta-base", "gpt2-large", "gpt2-medium", "gpt2-xl", "gpt2", "openai-gpt", "roberta-base-openai-detector", "roberta-base",
-            "roberta-large-mnli", "roberta-large-openai-detector", "roberta-large", "sentence-transformers/all-MiniLM-L6-v2", "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
-            "t5-11b", "t5-3b", "t5-base", "t5-large", "t5-small", "transfo-xl-wt103", "xlm-clm-ende-1024", "xlm-clm-enfr-1024", "xlm-mlm-100-1280", "xlm-mlm-17-1280",
-            "xlm-mlm-en-2048", "xlm-mlm-ende-1024", "xlm-mlm-enfr-1024", "xlm-mlm-enro-1024", "xlm-mlm-tlm-xnli15-1024", "xlm-mlm-xnli15-1024", "xlm-roberta-base",
-            "xlm-roberta-large-finetuned-conll02-dutch", "xlm-roberta-large-finetuned-conll02-spanish", "xlm-roberta-large-finetuned-conll03-english",
-            "xlm-roberta-large-finetuned-conll03-german", "xlm-roberta-large", "xlnet-base-cased", "xlnet-large-cased"
-        ],
+        "type": "model_select", # Custom type for model selection with download
+        "options": [], # Will be populated dynamically
         "order": 1
     },
     {
@@ -100,20 +87,9 @@ DEFAULT_CONFIGS = [
         "order": 2
     },
     {
-        "key": "ai_max_categories",
-        "value": "3",
-        "default": "3",
-        "description": "config.ai.max_categories",
-        "hint": "config.ai.max_categories.hint",
-        "tab": "ai_config",
-        "group": "basic_ai",
-        "type": "int",
-        "order": 3
-    },
-    {
         "key": "ai_tags",
-        "value": "[]",
-        "default": "[]",
+        "value": "{\"groups\": [], \"tags\": []}",
+        "default": "{\"groups\": [], \"tags\": []}",
         "description": "config.ai.tags",
         "hint": "config.ai.tags.hint",
         "tab": "ai_config",

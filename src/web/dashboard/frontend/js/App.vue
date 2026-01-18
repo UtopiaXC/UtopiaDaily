@@ -57,6 +57,7 @@ export default {
             isInitializing: true,
             serverName: 'Utopia Daily',
             isDarkMode: false,
+            systemMediaQuery: null,
 
             user: null,
             token: null,
@@ -94,9 +95,15 @@ export default {
                 this.updatePageTitle();
             });
 
+            // Theme initialization with system listener
+            this.systemMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+            this.systemMediaQuery.addEventListener('change', this.onSystemThemeChange);
+
             const storedTheme = localStorage.getItem('theme');
-            if (storedTheme === 'dark' || (!storedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-                this.isDarkMode = true;
+            if (storedTheme) {
+                this.isDarkMode = storedTheme === 'dark';
+            } else {
+                this.isDarkMode = this.systemMediaQuery.matches;
             }
 
             await this.fetchSystemInfo();
@@ -138,7 +145,16 @@ export default {
             this.updatePageTitle();
         }
     },
+    beforeUnmount() {
+        if (this.systemMediaQuery) {
+            this.systemMediaQuery.removeEventListener('change', this.onSystemThemeChange);
+        }
+        window.removeEventListener('auth-logout', this.logout);
+    },
     methods: {
+        onSystemThemeChange(e) {
+            this.isDarkMode = e.matches;
+        },
         t(key, defaultVal) {
             return this.messages[key] || defaultVal || key;
         },

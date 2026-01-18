@@ -20,6 +20,7 @@ from src.database.models import SystemConfig
 from src.scraper.scraper import run_scraper_service
 from src.web.server import run_web_server
 from src.utils.event import EventManager
+from src.utils.classification.classification import ensure_models_dir, check_current_model
 
 children_processes = []
 
@@ -51,8 +52,14 @@ def cleanup_and_exit():
 
 def main():
     try:
+        Log.i(TAG, "Initializing models directory...")
+        ensure_models_dir()
+        
         Log.i(TAG, "Initializing database and checking migrations...")
         migration_manager.run_migrations()
+        
+        Log.i(TAG, "Checking current model configuration...")
+        check_current_model()
     except Exception as e:
         # Try to record event before dying, though DB might be broken
         try:

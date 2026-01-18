@@ -74,6 +74,45 @@
                             </div>
                         </template>
 
+                        <!-- Layout for Model Select Type -->
+                        <template v-else-if="conf.type === 'model_select'">
+                            <div class="flex items-center gap-2 mb-1">
+                                <label class="text-sm font-bold text-gray-800 dark:text-gray-200">{{ t(conf.description, conf.description) }}</label>
+                                <div v-if="conf.hint" class="relative group">
+                                    <span class="material-icons text-gray-400 text-sm cursor-help hover:text-blue-500 transition-colors">help_outline</span>
+                                    <div class="absolute left-full ml-2 top-1/2 -translate-y-1/2 w-64 p-2 bg-gray-800 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                                        {{ t(conf.hint) }}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex gap-3 items-center">
+                                <div class="flex-1 flex gap-2">
+                                    <CustomSelect
+                                        v-if="conf.is_editable"
+                                        v-model="conf.value"
+                                        :options="conf.options"
+                                        class="flex-1"
+                                    />
+                                    <input v-else type="text" :value="conf.value" disabled class="flex-1 shadow-sm border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed">
+
+                                    <button @click="openDownloadModal(conf.options)" class="px-3 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg transition-colors shadow-sm text-sm font-medium whitespace-nowrap">
+                                        {{ t('config.ai.model.download') }}
+                                    </button>
+                                    <button @click="refreshModels" class="px-3 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg transition-colors shadow-sm text-sm font-medium whitespace-nowrap flex items-center gap-1">
+                                        <span v-if="refreshingModels" class="material-icons text-sm animate-spin">sync</span>
+                                        {{ t('config.ai.model.refresh') }}
+                                    </button>
+                                </div>
+
+                                <button v-if="conf.is_editable" @click="saveConfig(conf)"
+                                        class="px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-medium flex items-center gap-1 transition-colors shadow-sm flex-shrink-0 h-[38px]"
+                                        :disabled="savingConfig === conf.key">
+                                    <span class="material-icons text-sm" :class="{'animate-spin': savingConfig === conf.key}">save</span>
+                                    {{ savingConfig === conf.key ? t('common.saving') : t('common.save') }}
+                                </button>
+                            </div>
+                        </template>
+
                         <!-- Layout for Other Types: Label + Hint on top, Input + Save Button in Row -->
                         <template v-else>
                             <div class="flex items-center gap-2 mb-1">
@@ -131,16 +170,42 @@
                 </div>
             </div>
         </div>
+
+        <!-- Global Loading Overlay -->
+        <div v-if="downloadingModel" class="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-black bg-opacity-70 backdrop-blur-sm">
+            <span class="material-icons animate-spin text-5xl text-white mb-4">autorenew</span>
+            <p class="text-white text-lg font-medium">{{ t('common.downloading') }}</p>
+            <p class="text-gray-300 text-sm mt-2">{{ t('common.downloading_hint') }}</p>
+        </div>
+
+        <ConfirmModal
+            :show="showLoadDefaultModal"
+            :title="t('config.ai.tags.load_default')"
+            :message="t('config.ai.tags.confirm_load_default')"
+            :t="t"
+            @confirm="confirmLoadDefault"
+            @cancel="showLoadDefaultModal = false"
+        />
+
+        <ModelDownloadModal
+            :show="showDownloadModal"
+            :t="t"
+            :installed-models="currentInstalledModels"
+            @confirm="downloadModel"
+            @cancel="showDownloadModal = false"
+        />
     </div>
 </template>
 
 <script>
 import CustomSelect from '../../components/CustomSelect.vue';
 import TagConfigEditor from '../components/TagConfigEditor.vue';
+import ConfirmModal from '../../components/ConfirmModal.vue';
+import ModelDownloadModal from '../components/ModelDownloadModal.vue';
 import http from '../../utils/http.js';
 
 export default {
-    components: { CustomSelect, TagConfigEditor },
+    components: { CustomSelect, TagConfigEditor, ConfirmModal, ModelDownloadModal },
     props: ['t', 'allLocales', 'currentLocale'],
     inject: ['showToast'],
     data() {
@@ -148,7 +213,13 @@ export default {
             loading: false,
             configs: [],
             savingConfig: null,
-            currentTab: 'system'
+            currentTab: 'system',
+            showLoadDefaultModal: false,
+            pendingLoadDefaultKey: null,
+            showDownloadModal: false,
+            refreshingModels: false,
+            downloadingModel: false,
+            currentInstalledModels: []
         }
     },
     computed: {
@@ -221,9 +292,47 @@ export default {
             }
         },
         loadDefault(key) {
+            this.pendingLoadDefaultKey = key;
+            this.showLoadDefaultModal = true;
+        },
+        confirmLoadDefault() {
+            const key = this.pendingLoadDefaultKey;
             const editor = this.$refs['editor_' + key];
             if (editor && editor[0]) {
                 editor[0].loadDefault();
+            }
+            this.showLoadDefaultModal = false;
+            this.pendingLoadDefaultKey = null;
+        },
+        async refreshModels() {
+            this.refreshingModels = true;
+            try {
+                // Just re-fetch configs, the backend will re-scan models
+                await this.fetchSystemConfigs();
+                this.showToast(this.t('common.success'), 'success');
+            } catch (err) {
+                this.showToast(this.t('common.failed_op') + err.message, 'error');
+            } finally {
+                this.refreshingModels = false;
+            }
+        },
+        openDownloadModal(installedModels) {
+            this.currentInstalledModels = installedModels || [];
+            this.showDownloadModal = true;
+        },
+        async downloadModel(repoId) {
+            this.showDownloadModal = false;
+            this.downloadingModel = true; // Show full screen loader
+
+            try {
+                const res = await http.post('/api/dashboard/system-config/download-model', { repo_id: repoId });
+                this.showToast(res.data.message, 'success');
+                await this.fetchSystemConfigs(); // Refresh list
+            } catch (err) {
+                const msg = err.response?.data?.detail || err.message;
+                this.showToast(this.t('common.failed_op') + msg, 'error');
+            } finally {
+                this.downloadingModel = false;
             }
         }
     }

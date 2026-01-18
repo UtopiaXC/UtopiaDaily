@@ -13,7 +13,7 @@
 
         <div v-if="isOpen"
              :class="[
-                'absolute z-50 mt-1 bg-white dark:bg-gray-800 shadow-lg rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm max-h-60',
+                'absolute z-[100] mt-1 bg-white dark:bg-gray-800 shadow-lg rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm max-h-60',
                 'min-w-full w-max max-w-xs',
                 variant === 'icon' ? 'right-0 origin-top-right' : 'left-0 origin-top-left'
              ]">
