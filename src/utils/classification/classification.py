@@ -14,13 +14,12 @@ TAG = "CLASSIFICATION_MANAGER"
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 MODELS_DIR = os.path.join(PROJECT_ROOT, "models")
 
-# --- Global Caches ---
 _loaded_models = {}
 _tag_embeddings_cache = {}
 
-# --- Constants for Boosting ---
 PRIORITY_WEIGHT = 0.0025
 KEYWORD_HIT_BONUS = 0.03
+KEYWORD_BONUS_THRESHOLD = 0.75
 
 
 def ensure_models_dir():
@@ -91,24 +90,30 @@ def get_model(model_name):
     Log.i(TAG, f"Loading model: {model_name}...")
     try:
         tokenizer = Tokenizer.from_file(tokenizer_path)
-
-        # [OPTIMIZATION 1] Dynamic Padding
-        # Removed fixed length=512. Now pads to batch longest.
         tokenizer.enable_padding(pad_id=0, pad_token="[PAD]")
         tokenizer.enable_truncation(max_length=512)
-
         sess_options = ort.SessionOptions()
         sess_options.log_severity_level = 3
-        # sess_options.intra_op_num_threads = 2 # Uncomment if CPU usage is too high
-
         session = ort.InferenceSession(onnx_path, sess_options)
-
         _loaded_models[model_name] = (session, tokenizer)
         Log.i(TAG, f"Model {model_name} loaded successfully.")
         return session, tokenizer
     except Exception as e:
         Log.e(TAG, f"Failed to load model {model_name}", error=e)
         raise
+
+
+def get_pooling_method(model_name):
+    name = model_name.lower()
+    cls_keywords = ["bge", "labse", "snowflake", "clip", "gte"]
+    for kw in cls_keywords:
+        if kw in name:
+            return "cls"
+    return "mean"
+
+
+def cls_pooling(model_output):
+    return model_output[0][:, 0]
 
 
 def mean_pooling(model_output, attention_mask):
@@ -125,7 +130,7 @@ def normalize(v):
     return v / np.clip(norm, a_min=1e-9, a_max=None)
 
 
-def encode(texts, session, tokenizer):
+def encode(texts, session, tokenizer, pooling_method='mean'):
     if isinstance(texts, str):
         texts = [texts]
     if not texts:
@@ -147,7 +152,11 @@ def encode(texts, session, tokenizer):
         inputs['token_type_ids'] = token_type_ids
 
     outputs = session.run(None, inputs)
-    embeddings = mean_pooling(outputs, attention_mask)
+    if pooling_method == 'cls':
+        embeddings = cls_pooling(outputs)
+    else:
+        embeddings = mean_pooling(outputs, attention_mask)
+
     embeddings = normalize(embeddings)
     return embeddings
 
@@ -167,10 +176,6 @@ def clean_text(text):
 
 
 def split_text_smart(text, max_chars=800, max_segments=6):
-    """
-    [OPTIMIZATION 2] Smart Splitting
-    Merges sentences into larger context chunks to maximize Transformer utilization.
-    """
     if not text: return []
     raw_segments = re.split(r'(?<=[.?!。？！\n])\s*', text)
 
@@ -225,7 +230,9 @@ def classify_text(text, model_name, tags_config, confidence_threshold=60):
         Log.e(TAG, f"Could not get model {model_name}: {e}")
         return []
 
-    # --- Tag Embedding & Caching ---
+    pooling_method = get_pooling_method(model_name)
+    Log.d(TAG, f"Using pooling method: {pooling_method} for model: {model_name}")
+
     config_hash = get_config_hash(tags_config)
     cache_key = (model_name, config_hash)
 
@@ -238,17 +245,14 @@ def classify_text(text, model_name, tags_config, confidence_threshold=60):
         if "tags" not in tags_config: return []
         all_phrases = []
 
-        # Build embeddings from Name and Keywords
         for i, tag in enumerate(tags_config["tags"]):
             name = tag.get("name")
             keywords = tag.get("keywords", [])
 
-            # Embed Name
             if name:
                 all_phrases.append(name)
                 phrase_meta.append({"tag_idx": i})
 
-            # Embed Keywords (Optional: can reduce count to speed up init)
             for kw in keywords:
                 if kw:
                     all_phrases.append(kw)
@@ -257,25 +261,22 @@ def classify_text(text, model_name, tags_config, confidence_threshold=60):
         if not all_phrases: return []
 
         try:
-            phrase_embeddings = encode(all_phrases, session, tokenizer)
+            phrase_embeddings = encode(all_phrases, session, tokenizer, pooling_method=pooling_method)
             if config_hash:
                 _tag_embeddings_cache[cache_key] = (phrase_embeddings, phrase_meta)
         except Exception as e:
             Log.e(TAG, "Encoding phrases failed", error=e)
             return []
 
-    # --- Inference ---
     try:
-        segment_embeddings = encode(segments, session, tokenizer)
+        segment_embeddings = encode(segments, session, tokenizer, pooling_method=pooling_method)
     except Exception as e:
         Log.e(TAG, "Encoding text segments failed", error=e)
         return []
 
-    # Similarity Calculation
     similarity_matrix = cos_sim(segment_embeddings, phrase_embeddings)
     phrase_scores = np.max(similarity_matrix, axis=0)
 
-    # Aggregation
     tag_scores = {}
     for idx, score in enumerate(phrase_scores):
         tag_idx = phrase_meta[idx]["tag_idx"]
@@ -284,7 +285,6 @@ def classify_text(text, model_name, tags_config, confidence_threshold=60):
         else:
             tag_scores[tag_idx] = max(tag_scores[tag_idx], score)
 
-    # --- [OPTIMIZATION 3] Hybrid Scoring & Priority Boosting ---
     candidates = []
     threshold = confidence_threshold / 100.0
 
@@ -292,39 +292,33 @@ def classify_text(text, model_name, tags_config, confidence_threshold=60):
         tag_info = tags_config["tags"][tag_idx]
         priority = tag_info.get("priority", 0)
         keywords = tag_info.get("keywords", [])
-
         final_score = score
-
-        # A. Keyword Bonus (Hybrid Search)
-        # If specific keyword appears in text, give robust bonus
         hit_keyword = False
-        for kw in keywords:
-            if kw and kw.lower() in text_lower:
-                hit_keyword = True
-                break
+        if score > KEYWORD_BONUS_THRESHOLD:
+            for kw in keywords:
+                if kw and kw.lower() in text_lower:
+                    hit_keyword = True
+                    break
 
         if hit_keyword:
             final_score += KEYWORD_HIT_BONUS
 
-        # B. Priority Boosting
-        # Add small bias based on priority (e.g., Priority 10 adds 0.025)
-        # Allows specific tags (Energy) to overtake generic ones (Environment)
         priority_boost = priority * PRIORITY_WEIGHT
         final_score += priority_boost
 
         if final_score >= threshold:
+            display_conf = min(float(final_score), 1.0)
+
             candidates.append({
-                "score": float(final_score),
+                "score": display_conf,
                 "raw_score": float(score),
                 "tag": tag_info.get("name"),
                 "group": tag_info.get("group"),
                 "priority": priority
             })
 
-    # Sort by final boosted score
     candidates.sort(key=lambda x: x["score"], reverse=True)
 
-    # --- Group Limits ---
     group_limits = {g["name"]: g.get("max_results", 1) for g in tags_config.get("groups", [])}
     group_counts = {}
 
@@ -338,11 +332,9 @@ def classify_text(text, model_name, tags_config, confidence_threshold=60):
                 continue
             group_counts[group] = current_count + 1
 
-        # Cap confidence output at 1.0 for UI display
-        display_conf = min(cand["score"], 1.0)
         final_results.append({
             "tag": cand["tag"],
-            "confidence": round(display_conf, 4)
+            "confidence": round(cand["score"], 4)
         })
 
     Log.i(TAG, f"Classified: {len(final_results)} tags found.")
