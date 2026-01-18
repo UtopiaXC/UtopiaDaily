@@ -31,7 +31,7 @@
                 @toggle-sidebar="toggleSidebar"
             />
             <main class="flex-1 overflow-x-hidden overflow-y-auto p-4 md:p-8 bg-gray-100 dark:bg-gray-900 transition-colors duration-200">
-                <component :is="currentTabComponent" :t="t" :all-locales="allLocales" :current-user="user" />
+                <component :is="currentTabComponent" :t="t" :all-locales="allLocales" :current-user="user" :current-locale="currentLocale" />
             </main>
         </div>
     </div>

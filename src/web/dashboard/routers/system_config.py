@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
+import json
 from pydantic import BaseModel
 from src.database.connection import system_db_manager
 from src.database.models import SystemConfig
@@ -14,6 +15,8 @@ class ConfigItem(BaseModel):
     key: str
     value: Optional[str]
     description: Optional[str]
+    hint: Optional[str]
+    tab: str
     group: str
     type: str
     options: Optional[list] = None
@@ -31,8 +34,10 @@ def get_db():
         db.close()
 
 @router.get("/", response_model=List[ConfigItem])
-async def get_configs(group: Optional[str] = None, db: Session = Depends(get_db)):
+async def get_configs(tab: Optional[str] = None, group: Optional[str] = None, db: Session = Depends(get_db)):
     query = db.query(SystemConfig)
+    if tab:
+        query = query.filter(SystemConfig.tab == tab)
     if group:
         query = query.filter(SystemConfig.group == group)
     query = query.order_by(SystemConfig.order.asc())
@@ -69,6 +74,12 @@ async def update_config(key: str, update: ConfigUpdate, req: Request, db: Sessio
 
             if valid_values and new_value not in valid_values:
                  raise HTTPException(status_code=400, detail=f"Invalid option. Must be one of {valid_values}")
+    
+    elif config.type == "json":
+        try:
+            json.loads(new_value)
+        except json.JSONDecodeError:
+            raise HTTPException(status_code=400, detail="Invalid JSON format")
 
     config.value = new_value
     db.commit()

@@ -9,8 +9,10 @@ class SystemConfig(BaseModel):
     value = Column(Text, nullable=True)
     default = Column(Text, nullable=True)
     description = Column(Text, nullable=True)
+    hint = Column(Text, nullable=True)
 
-    group = Column(String(50), nullable=False, default="system")
+    tab = Column(String(50), nullable=False, default="system")
+    group = Column(String(50), nullable=False, default="basic")
     type = Column(String(20), nullable=False, default="string")
     options = Column(JSON, nullable=True)
     is_public = Column(Boolean, nullable=False, default=False)
