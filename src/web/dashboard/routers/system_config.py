@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, BackgroundTasks
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import List, Optional, Union
 import json
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from src.database.connection import system_db_manager
 from src.database.models import SystemConfig
 from src.utils.logger.logger import Log
@@ -26,7 +26,11 @@ class ConfigItem(BaseModel):
     order: int = 0
 
 class ConfigUpdate(BaseModel):
-    value: str
+    value: Union[str, int, float, bool]
+
+    @field_validator('value')
+    def convert_to_string(cls, v):
+        return str(v)
 
 class ModelDownloadRequest(BaseModel):
     repo_id: str
