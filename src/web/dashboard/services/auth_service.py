@@ -43,24 +43,33 @@ class AuthService:
             self._record_attempt(db, ip_address, request.username, False)
             return None
 
-        if not crypto_manager.verify_password(request.password, user.password_hash):
-            self._record_attempt(db, ip_address, request.username, False, user.id)
+        # Store user ID and other fields immediately to avoid DetachedInstanceError
+        user_id = user.id
+        username = user.username
+        nickname = user.nickname
+        email = user.email
+        role_id = user.role_id
+        is_active = user.is_active
+        password_hash = user.password_hash
+
+        if not crypto_manager.verify_password(request.password, password_hash):
+            self._record_attempt(db, ip_address, request.username, False, user_id)
             return None
             
-        if not user.is_active:
-            self._record_attempt(db, ip_address, request.username, False, user.id)
+        if not is_active:
+            self._record_attempt(db, ip_address, request.username, False, user_id)
             raise Exception("User is disabled")
 
-        self._record_attempt(db, ip_address, request.username, True, user.id)
+        self._record_attempt(db, ip_address, request.username, True, user_id)
 
         expire_minutes = 30 * 24 * 60 if request.remember_me else 24 * 60
-        access_token = create_access_token(data={"sub": user.id}, expires_delta=expire_minutes * 60)
+        access_token = create_access_token(data={"sub": user_id}, expires_delta=expire_minutes * 60)
 
         expires_at = int(time.time() * 1000) + (expire_minutes * 60 * 1000)
         token_hash = hashlib.sha256(access_token.encode()).hexdigest()
         
         session = UserSession(
-            user_id=user.id,
+            user_id=user_id,
             token_hash=token_hash,
             expires_at=expires_at,
             ip_address=ip_address,
@@ -69,16 +78,18 @@ class AuthService:
         )
         db.add(session)
         db.commit()
-        role = db.query(UserRole).filter(UserRole.id == user.role_id).first()
+        
+        # Re-query role using stored role_id
+        role = db.query(UserRole).filter(UserRole.id == role_id).first()
         
         return LoginResponse(
             token=access_token,
             expires_at=expires_at,
             user=UserResponse(
-                id=user.id,
-                username=user.username,
-                nickname=user.nickname,
-                email=user.email,
+                id=user_id,
+                username=username,
+                nickname=nickname,
+                email=email,
                 role_name=role.name if role else "unknown",
                 permissions=role.permissions if role else {}
             )
