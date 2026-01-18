@@ -29,12 +29,12 @@ def get_locale(req: Request) -> str:
     return i18n.default_locale
 
 @router.get("/captcha")
-async def get_captcha():
+def get_captcha():
     captcha_id, svg = generate_captcha()
     return {"captcha_id": captcha_id, "svg": svg}
 
 @router.post("/login", response_model=LoginResponse)
-async def login(request: LoginRequest, req: Request, db: Session = Depends(get_db)):
+def login(request: LoginRequest, req: Request, db: Session = Depends(get_db)):
     locale = get_locale(req)
     try:
         ip = req.client.host
@@ -64,7 +64,7 @@ async def login(request: LoginRequest, req: Request, db: Session = Depends(get_d
         raise HTTPException(status_code=500, detail=detail)
 
 @router.get("/me", response_model=UserResponse)
-async def get_current_user_info(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def get_current_user_info(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     current_user = db.query(User).filter(User.id == user.id).first()
     if not current_user:
         raise HTTPException(status_code=404, detail="User not found")

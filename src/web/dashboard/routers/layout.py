@@ -5,7 +5,7 @@ from src.utils.constants.permissions import Permissions
 router = APIRouter(prefix="/api/dashboard/layout", tags=["Dashboard Layout"])
 
 @router.get("/menu")
-async def get_menu(request: Request, user = Depends(get_current_user)):
+def get_menu(request: Request, user = Depends(get_current_user)):
     user_perms = getattr(request.state, "permissions", [])
     
     menu = []

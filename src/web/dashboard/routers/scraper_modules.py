@@ -14,12 +14,12 @@ from src.utils.classification.classification import list_local_models
 router = APIRouter(prefix="/api/dashboard/scraper/modules", tags=["Scraper Modules"])
 
 @router.get("/", response_model=List[ScraperModuleResponse])
-async def get_modules(db: Session = Depends(get_db)):
+def get_modules(db: Session = Depends(get_db)):
     modules = db.query(ScraperModule).filter(ScraperModule.is_deleted == False).all()
     return modules
 
 @router.get("/{module_id}", response_model=ScraperModuleDetailResponse)
-async def get_module_detail(module_id: str, db: Session = Depends(get_db)):
+def get_module_detail(module_id: str, db: Session = Depends(get_db)):
     # Do NOT reload modules here. Only read from DB and local cache.
     local_manager = ModuleManager()
     
@@ -68,7 +68,7 @@ async def get_module_detail(module_id: str, db: Session = Depends(get_db)):
     )
 
 @router.get("/{module_id}/tasks", response_model=ScraperModuleTaskResponse)
-async def get_module_tasks(module_id: str, db: Session = Depends(get_db)):
+def get_module_tasks(module_id: str, db: Session = Depends(get_db)):
     module = db.query(ScraperModule).filter(ScraperModule.module_id == module_id, ScraperModule.is_deleted == False).first()
     if not module:
         raise HTTPException(status_code=404, detail="Module not found")
@@ -90,7 +90,7 @@ async def get_module_tasks(module_id: str, db: Session = Depends(get_db)):
     )
 
 @router.post("/{module_id}/test_config", response_model=TestModuleResponse)
-async def test_module_config(module_id: str, config: Dict[str, Any] = Body(...)):
+def test_module_config(module_id: str, config: Dict[str, Any] = Body(...)):
     """
     Test the provided configuration against the module's validation logic.
     """
@@ -111,15 +111,18 @@ async def test_module_config(module_id: str, config: Dict[str, Any] = Body(...))
     return TestModuleResponse(success=success, message=message)
 
 @router.post("/{module_id}/config")
-async def update_module_config(module_id: str, req: Request, config: Dict[str, Any] = Body(...), db: Session = Depends(get_db)):
+def update_module_config(module_id: str, req: Request, config: Dict[str, Any] = Body(...), db: Session = Depends(get_db)):
     module = db.query(ScraperModule).filter(ScraperModule.module_id == module_id).first()
     if not module:
         raise HTTPException(status_code=404, detail="Module not found")
+    
+    # Store module internal ID to avoid DetachedInstanceError later
+    module_internal_id = module.id
 
     # 1. Basic Validation (Type & Regex)
     for key, value in config.items():
         cfg_item = db.query(ScraperModuleConfig).filter(
-            ScraperModuleConfig.module_id == module.id,
+            ScraperModuleConfig.module_id == module_internal_id,
             ScraperModuleConfig.config_key == key
         ).first()
         
@@ -155,7 +158,7 @@ async def update_module_config(module_id: str, req: Request, config: Dict[str, A
 
     for key, value in config.items():
         cfg_item = db.query(ScraperModuleConfig).filter(
-            ScraperModuleConfig.module_id == module.id,
+            ScraperModuleConfig.module_id == module_internal_id,
             ScraperModuleConfig.config_key == key
         ).first()
         if cfg_item:
@@ -181,7 +184,7 @@ async def update_module_config(module_id: str, req: Request, config: Dict[str, A
     return {"status": "success", "message": "Configuration updated"}
 
 @router.post("/{module_id}/enable")
-async def enable_module(module_id: str, req: Request):
+def enable_module(module_id: str, req: Request):
     local_manager = ModuleManager()
     
     try:
@@ -211,7 +214,7 @@ async def enable_module(module_id: str, req: Request):
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/{module_id}/disable")
-async def disable_module(module_id: str, req: Request):
+def disable_module(module_id: str, req: Request):
     local_manager = ModuleManager()
     
     local_manager.disable_module(module_id)
@@ -229,14 +232,14 @@ async def disable_module(module_id: str, req: Request):
     return {"status": "success", "message": f"Module {module_id} disabled"}
 
 @router.post("/{module_id}/test", response_model=TestModuleResponse)
-async def test_module(module_id: str):
+def test_module(module_id: str):
     local_manager = ModuleManager()
     
     success, message = local_manager.test_module(module_id)
     return TestModuleResponse(success=success, message=message)
 
 @router.post("/reload")
-async def reload_modules(req: Request):
+def reload_modules(req: Request):
     local_manager = ModuleManager()
     local_manager.reload_modules()
     

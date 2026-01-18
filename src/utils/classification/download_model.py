@@ -88,8 +88,7 @@ def download_model_from_hf(repo_id: str):
             file_path = hf_hub_download(
                 repo_id=repo_id,
                 filename=filename,
-                local_dir=local_dir,
-                local_dir_use_symlinks=False
+                local_dir=local_dir
             )
             
             # Move model_quantized.onnx to root of model dir

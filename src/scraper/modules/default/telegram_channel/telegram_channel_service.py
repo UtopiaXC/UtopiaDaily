@@ -104,13 +104,16 @@ def test_configuration(module, config):
         success, msg = scraper.test_connection(channel)
         if not success:
             failed_channels.append(channel)
-            
+
+    # TODO : DELETE
+    execute_schedule_task(module,"fetch_news")
+
     if failed_channels:
         return False, f"Failed to connect to: {', '.join(failed_channels)}"
     
     return True, "All channels accessible"
 
-def execute_schedule_task(module, cron: str, task_key: str, timestamp: datetime):
+def execute_schedule_task(module, task_key: str):
     if task_key == task_fetch.get("key"):
         Log.i(TAG, f"Executing task: {task_key}")
         channels = module.get_module_config("channels")

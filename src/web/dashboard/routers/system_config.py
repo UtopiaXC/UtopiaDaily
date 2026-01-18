@@ -39,7 +39,7 @@ def get_db():
         db.close()
 
 @router.get("/", response_model=List[ConfigItem])
-async def get_configs(tab: Optional[str] = None, group: Optional[str] = None, db: Session = Depends(get_db)):
+def get_configs(tab: Optional[str] = None, group: Optional[str] = None, db: Session = Depends(get_db)):
     query = db.query(SystemConfig)
     if tab:
         query = query.filter(SystemConfig.tab == tab)
@@ -57,7 +57,7 @@ async def get_configs(tab: Optional[str] = None, group: Optional[str] = None, db
     return configs
 
 @router.put("/{key}")
-async def update_config(key: str, update: ConfigUpdate, req: Request, db: Session = Depends(get_db)):
+def update_config(key: str, update: ConfigUpdate, req: Request, db: Session = Depends(get_db)):
     config = db.query(SystemConfig).filter(SystemConfig.key == key).first()
     if not config:
         raise HTTPException(status_code=404, detail="Config not found")
@@ -113,15 +113,15 @@ async def update_config(key: str, update: ConfigUpdate, req: Request, db: Sessio
     return {"status": "success", "key": key, "new_value": update.value}
 
 @router.get("/ai-models")
-async def get_ai_models():
+def get_ai_models():
     return list_local_models()
 
 @router.get("/default-models")
-async def get_default_models():
+def get_default_models():
     return get_default_models_json()
 
 @router.post("/download-model")
-async def download_model(request: ModelDownloadRequest, req: Request):
+def download_model(request: ModelDownloadRequest, req: Request):
     current_user = getattr(req.state, "user", None)
     
     try:
@@ -139,7 +139,7 @@ async def download_model(request: ModelDownloadRequest, req: Request):
             return {"status": "success", "message": msg}
         else:
             EventManager.record(
-                level=EventManager.LEVEL_ERROR,
+                level=EventManager.LEVEL_CRITICAL,
                 category=EventManager.CATEGORY_SYSTEM,
                 event_type="model_download_failed",
                 summary=f"Model download failed: {request.repo_id}",
@@ -150,7 +150,7 @@ async def download_model(request: ModelDownloadRequest, req: Request):
             
     except Exception as e:
          EventManager.record(
-            level=EventManager.LEVEL_ERROR,
+            level=EventManager.LEVEL_CRITICAL,
             category=EventManager.CATEGORY_SYSTEM,
             event_type="model_download_failed",
             summary=f"Model download failed: {request.repo_id}",

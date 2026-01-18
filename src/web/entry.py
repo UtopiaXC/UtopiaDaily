@@ -93,7 +93,7 @@ def create_app() -> FastAPI:
 
     if dashboard_dir_to_mount:
         @app.get("/dashboard", include_in_schema=False)
-        async def dashboard_redirect():
+        def dashboard_redirect():
             return RedirectResponse(url="/dashboard/")
         
         app.mount("/dashboard", StaticFiles(directory=dashboard_dir_to_mount, html=True), name="dashboard_frontend")
@@ -109,7 +109,7 @@ def create_app() -> FastAPI:
         Log.i(TAG, f"Newspaper root frontend mounted from {newspaper_frontend_dir}")
 
     @app.get("/api/health")
-    async def health_check():
+    def health_check():
         return {"status": "ok", "version": "1.0.0"}
 
     return app

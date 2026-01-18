@@ -16,7 +16,7 @@ def get_db():
         db.close()
 
 @router.get("/system-info")
-async def get_system_info(db: Session = Depends(get_db)):
+def get_system_info(db: Session = Depends(get_db)):
     server_name_config = db.query(SystemConfig).filter(SystemConfig.key == "server_name").first()
     server_version_config = db.query(SystemConfig).filter(SystemConfig.key == "server_version").first()
     server_name = server_name_config.value if server_name_config else None
@@ -27,7 +27,7 @@ async def get_system_info(db: Session = Depends(get_db)):
     }
 
 @router.get("/i18n/{locale}")
-async def get_translations(locale: str):
+def get_translations(locale: str):
     translations = i18n.translations.get(locale)
     if not translations:
         translations = i18n.translations.get(i18n.default_locale, {})
@@ -35,7 +35,7 @@ async def get_translations(locale: str):
     return translations
 
 @router.get("/locales")
-async def get_available_locales():
+def get_available_locales():
     try:
         lang_file = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "utils", "i18n", "languages.json")
         if os.path.exists(lang_file):

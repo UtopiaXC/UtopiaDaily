@@ -8,11 +8,13 @@ from typing import Dict, Any, Tuple
 from src.utils.logger.logger import Log
 from src.utils.i18n import i18n
 from src.database.connection import system_session_scope
-from src.database.models import ScraperModule, ScraperModuleConfig, ScraperModuleTask
+from src.database.models import ScraperModule, ScraperModuleConfig, ScraperModuleTask, SystemConfig
 from src.utils.event import EventManager
 from src.utils.cache_manage import cache_manager
+from src.utils.classification.classification import classify_text
 
 TAG = "MODULE_MANAGER"
+
 
 class ModuleContext:
     def __init__(self, module_id: str, manager: 'ModuleManager'):
@@ -20,7 +22,8 @@ class ModuleContext:
         self._manager = manager
 
     def set_module_config(self, key, description, value, value_type, options, force_init, hint, regular):
-        self._manager.db_set_config(self.module_id, key, description, value, value_type, options, force_init, hint, regular)
+        self._manager.db_set_config(self.module_id, key, description, value, value_type, options, force_init, hint,
+                                    regular)
 
     def get_module_config(self, key):
         return self._manager.db_get_config(self.module_id, key)
@@ -38,21 +41,20 @@ class ModuleContext:
         self._manager.db_drop_task(self.module_id, key)
 
     def mark_message_tag(self, message):
-        # TODO: Call actual AI tagging service
-        return [{"tag": "news", "confidence": 0.9}]
+        return self._manager.mark_message_tag(self.module_id, message)
 
     def save_structured_results(self, value, fingerprint=""):
-        Log.i(TAG, f"[{self.module_id}] Data saved: {value.get('title', 'No Title')}")
         # TODO: Save to actual database
+        Log.w(TAG, json.dumps(value, ensure_ascii=False))
         return {"status": "success"}
-    
+
     def install_requirements(self, requirements_file: str):
         return self._manager.install_module_requirements(self.module_id, requirements_file)
 
 
 class ModuleManager:
     _instance = None
-    
+
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super(ModuleManager, cls).__new__(cls)
@@ -62,18 +64,18 @@ class ModuleManager:
     def __init__(self):
         if self._initialized:
             return
-            
+
         current_dir = os.path.dirname(os.path.abspath(__file__))
         self.dirs = {
             "default": os.path.join(current_dir, "default"),
             "external": os.path.join(current_dir, "external")
         }
-        
+
         self._logged_conflicts = set()
         self._modules_cache = {}
-        
+
         self._load_modules_cache()
-        
+
         self._initialized = True
 
     def _load_modules_cache(self):
@@ -94,7 +96,7 @@ class ModuleManager:
                 return
 
             config = session.query(ScraperModuleConfig).filter_by(module_id=module.id, config_key=key).first()
-            
+
             if config:
                 if force_init:
                     config.description = description
@@ -157,7 +159,7 @@ class ModuleManager:
                 return
 
             task = session.query(ScraperModuleTask).filter_by(module_id=module.id, task_key=key).first()
-            
+
             if task:
                 if force_init:
                     task.description = description
@@ -208,7 +210,7 @@ class ModuleManager:
                 return {}
             tasks = session.query(ScraperModuleTask).filter_by(module_id=module.id).all()
             return {t.task_key: {"name": t.name, "description": t.description} for t in tasks}
-    
+
     def is_module_enabled(self, module_id):
         with system_session_scope() as session:
             module = session.query(ScraperModule).filter_by(module_id=module_id).first()
@@ -220,11 +222,11 @@ class ModuleManager:
 
         found_modules = {}
         scan_order = ["default", "external"]
-        
+
         for source_type in scan_order:
             path = self.dirs.get(source_type)
             if not path or not os.path.exists(path): continue
-            
+
             for folder_name in os.listdir(path):
                 module_path = os.path.join(path, folder_name, "controller.py")
                 if os.path.isfile(module_path):
@@ -232,13 +234,15 @@ class ModuleManager:
                     meta = self._read_module_meta(module_path, temp_id)
 
                     if not meta or "id" not in meta or "name" not in meta or "version" not in meta:
-                        Log.w(TAG, f"Skipping invalid module at {module_path}: Missing required meta fields (id, name, version)")
+                        Log.w(TAG,
+                              f"Skipping invalid module at {module_path}: Missing required meta fields (id, name, version)")
                         continue
-                    
+
                     module_id = meta["id"]
 
                     if module_id in found_modules:
-                        Log.w(TAG, f"Duplicate module ID '{module_id}' found in {source_type}. Ignoring {module_path}. Keeping version from {found_modules[module_id]['source']}.")
+                        Log.w(TAG,
+                              f"Duplicate module ID '{module_id}' found in {source_type}. Ignoring {module_path}. Keeping version from {found_modules[module_id]['source']}.")
 
                         if module_id not in self._logged_conflicts:
                             EventManager.record(
@@ -263,7 +267,7 @@ class ModuleManager:
                         "source": source_type,
                         "meta": meta
                     }
-        
+
         self._modules_cache = found_modules
         self._save_modules_cache()
         return found_modules
@@ -304,7 +308,7 @@ class ModuleManager:
             for module_id, info in scanned_modules.items():
                 meta = info["meta"]
                 source = info["source"]
-                
+
                 if module_id in existing_modules:
                     module = existing_modules[module_id]
                     module.name = meta["name"]
@@ -313,12 +317,12 @@ class ModuleManager:
                     module.author = meta.get("author")
                     module.meta = meta
                     module.source = source
-                    
+
                     if module.is_deleted:
                         Log.i(TAG, f"Restoring deleted module: {module_id}")
                         module.is_deleted = False
                         module.is_enable = False
-                    
+
                     Log.i(TAG, f"Updated module: {module_id}")
                 else:
                     existing = session.query(ScraperModule).filter_by(module_id=module_id).first()
@@ -355,7 +359,7 @@ class ModuleManager:
         if not module_info:
             Log.e(TAG, f"Module {module_id} not found in cache")
             return False
-        
+
         success, message = self.test_module(module_id)
         if not success:
             Log.w(TAG, f"Module {module_id} failed pre-enable test: {message}")
@@ -365,16 +369,16 @@ class ModuleManager:
             spec = importlib.util.spec_from_file_location(f"setup_{module_id}", module_info["path"])
             module_lib = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module_lib)
-            
+
             ctx = ModuleContext(module_id, self)
             instance = module_lib.create_module(ctx)
-            
+
             if instance.enable_module():
                 with system_session_scope() as session:
                     module = session.query(ScraperModule).filter_by(module_id=module_id).first()
                     if module:
                         module.is_enable = True
-                        
+
                         # Add default AI configs if not present
                         self._ensure_default_ai_configs(session, module)
 
@@ -404,7 +408,7 @@ class ModuleManager:
                 "description": "config.ai.model",
                 "hint": "config.ai.model.hint",
                 "type": "model_select",
-                "options": [], 
+                "options": [],
                 "regex": None
             },
             {
@@ -429,10 +433,10 @@ class ModuleManager:
 
         for conf in default_configs:
             existing = session.query(ScraperModuleConfig).filter_by(
-                module_id=module.id, 
+                module_id=module.id,
                 config_key=conf["key"]
             ).first()
-            
+
             if not existing:
                 new_config = ScraperModuleConfig(
                     module_id=module.id,
@@ -485,12 +489,12 @@ class ModuleManager:
             module = session.query(ScraperModule).filter_by(module_id=module_id).first()
             if module:
                 module.is_enable = False
-            
+
         Log.i(TAG, f"Module {module_id} disabled")
 
     def notify_module_disabled(self, module_id, reason):
         Log.e(TAG, f"SYSTEM ALERT: Module {module_id} disabled due to: {reason}")
-        
+
         EventManager.record(
             level=EventManager.LEVEL_CRITICAL,
             category=EventManager.CATEGORY_MODULE,
@@ -508,7 +512,7 @@ class ModuleManager:
         module_info = self.get_module_info(module_id)
         if not module_info:
             return False, "Module not found"
-            
+
         try:
             module_path = module_info["path"]
             module_dir = os.path.dirname(module_path)
@@ -517,7 +521,7 @@ class ModuleManager:
             libs_dir = os.path.join(module_dir, "libs")
             if os.path.exists(libs_dir) and libs_dir not in sys.path:
                 sys.path.insert(0, libs_dir)
-            
+
             spec = importlib.util.spec_from_file_location(f"test_{module_id}", module_path)
             if spec is None:
                 return False, f"Could not load spec for {module_path}"
@@ -539,7 +543,7 @@ class ModuleManager:
         module_info = self.get_module_info(module_id)
         if not module_info:
             return False, "Module not found"
-            
+
         try:
             module_path = module_info["path"]
             module_dir = os.path.dirname(module_path)
@@ -564,3 +568,76 @@ class ModuleManager:
                 return True, "Module does not support config testing (assumed valid)"
         except Exception as e:
             return False, f"Config test error: {str(e)}"
+
+    def mark_message_tag(self, module_id, message):
+        """
+        Classify the message using either module-specific or system-wide configuration.
+        """
+        with system_session_scope() as session:
+            # 1. Get Module Config
+            module = session.query(ScraperModule).filter_by(module_id=module_id).first()
+            if not module:
+                Log.e(TAG, f"Module {module_id} not found for tagging")
+                return []
+
+            # Helper to get config value
+            def get_config_value(configs, key, default=None):
+                cfg = next((c for c in configs if c.config_key == key), None)
+                return cfg.value if cfg else default
+
+            module_configs = session.query(ScraperModuleConfig).filter_by(module_id=module.id).all()
+
+            override_str = get_config_value(module_configs, "override_system_config", "false")
+            override = str(override_str).lower() == "true"
+
+            ai_model = None
+            ai_confidence = 60
+            ai_tags_json = "{}"
+
+            if override:
+                ai_model = get_config_value(module_configs, "ai_model", "None")
+                conf_str = get_config_value(module_configs, "ai_confidence", "60")
+                try:
+                    ai_confidence = int(conf_str)
+                except:
+                    ai_confidence = 60
+                ai_tags_json = get_config_value(module_configs, "ai_tags", "{}")
+            else:
+                # 2. Fallback to System Config
+                sys_configs = session.query(SystemConfig).filter(
+                    SystemConfig.key.in_(["ai_model", "ai_confidence", "ai_tags"])
+                ).all()
+
+                def get_sys_config(key, default):
+                    cfg = next((c for c in sys_configs if c.key == key), None)
+                    return cfg.value if cfg else default
+
+                ai_model = get_sys_config("ai_model", "None")
+                conf_str = get_sys_config("ai_confidence", "60")
+                try:
+                    ai_confidence = int(conf_str)
+                except:
+                    ai_confidence = 60
+                ai_tags_json = get_sys_config("ai_tags", "{}")
+
+            if not ai_model or ai_model == "None":
+                return []
+
+            try:
+                ai_tags = json.loads(ai_tags_json)
+            except json.JSONDecodeError:
+                Log.e(TAG, f"Invalid JSON for AI tags in module {module_id}")
+                return []
+
+            # 3. Call Classification Service
+            try:
+                results = classify_text(
+                    text=message,
+                    model_name=ai_model,
+                    tags_config=ai_tags,
+                    confidence_threshold=ai_confidence
+                )
+                return results
+            except Exception as e:
+                Log.e(TAG, f"Classification failed for module {module_id}", error=e)
+                return []

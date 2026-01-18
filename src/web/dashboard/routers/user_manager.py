@@ -111,11 +111,11 @@ def validate_username(username: str):
     return True
 
 @router.get("/permissions")
-async def get_all_permissions():
+def get_all_permissions():
     return Permissions.get_all()
 
 @router.get("/roles", response_model=List[RoleResponse])
-async def get_roles(db: Session = Depends(get_db)):
+def get_roles(db: Session = Depends(get_db)):
     roles = db.query(UserRole).all()
     result = []
     for role in roles:
@@ -134,7 +134,7 @@ async def get_roles(db: Session = Depends(get_db)):
     return result
 
 @router.post("/roles", response_model=RoleResponse)
-async def create_role(role: RoleCreate, req: Request, db: Session = Depends(get_db)):
+def create_role(role: RoleCreate, req: Request, db: Session = Depends(get_db)):
     if db.query(UserRole).filter(UserRole.name == role.name).first():
         raise HTTPException(status_code=400, detail="Role name already exists")
     
@@ -160,7 +160,7 @@ async def create_role(role: RoleCreate, req: Request, db: Session = Depends(get_
     return RoleResponse(id=new_role.id, name=new_role.name, description=new_role.description, permissions=new_role.permissions, user_count=0)
 
 @router.put("/roles/{role_id}", response_model=RoleResponse)
-async def update_role(role_id: str, update: RoleUpdate, req: Request, db: Session = Depends(get_db)):
+def update_role(role_id: str, update: RoleUpdate, req: Request, db: Session = Depends(get_db)):
     locale = get_locale(req)
     role = db.query(UserRole).filter(UserRole.id == role_id).first()
     if not role:
@@ -201,7 +201,7 @@ async def update_role(role_id: str, update: RoleUpdate, req: Request, db: Sessio
     return RoleResponse(id=role.id, name=role.name, description=role.description, permissions=role.permissions, user_count=count)
 
 @router.delete("/roles/{role_id}")
-async def delete_role(role_id: str, req: Request, db: Session = Depends(get_db)):
+def delete_role(role_id: str, req: Request, db: Session = Depends(get_db)):
     locale = get_locale(req)
     role = db.query(UserRole).filter(UserRole.id == role_id).first()
     if not role:
@@ -233,7 +233,7 @@ async def delete_role(role_id: str, req: Request, db: Session = Depends(get_db))
     return {"status": "success"}
 
 @router.get("/users", response_model=List[UserResponse])
-async def get_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+def get_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     users = db.query(User).offset(skip).limit(limit).all()
     result = []
     for user in users:
@@ -250,7 +250,7 @@ async def get_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_d
     return result
 
 @router.post("/users", response_model=UserResponse)
-async def create_user(user: UserCreate, req: Request, db: Session = Depends(get_db)):
+def create_user(user: UserCreate, req: Request, db: Session = Depends(get_db)):
     locale = get_locale(req)
     
     if not validate_username(user.username):
@@ -309,7 +309,7 @@ async def create_user(user: UserCreate, req: Request, db: Session = Depends(get_
     }
 
 @router.put("/users/{user_id}", response_model=UserResponse)
-async def update_user(user_id: str, update: UserUpdate, req: Request, db: Session = Depends(get_db)):
+def update_user(user_id: str, update: UserUpdate, req: Request, db: Session = Depends(get_db)):
     locale = get_locale(req)
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
@@ -377,7 +377,7 @@ async def update_user(user_id: str, update: UserUpdate, req: Request, db: Sessio
     }
 
 @router.delete("/users/{user_id}")
-async def delete_user(user_id: str, req: Request, db: Session = Depends(get_db)):
+def delete_user(user_id: str, req: Request, db: Session = Depends(get_db)):
     locale = get_locale(req)
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
@@ -408,7 +408,7 @@ async def delete_user(user_id: str, req: Request, db: Session = Depends(get_db))
     return {"status": "success"}
 
 @router.post("/users/{user_id}/reset-password", response_model=PasswordResetResponse)
-async def reset_password(user_id: str, req: Request, db: Session = Depends(get_db)):
+def reset_password(user_id: str, req: Request, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")

@@ -54,7 +54,7 @@ class TelegramChannelModule(BaseModule):
         return service.test_configuration(self, config)
 
     def execute_schedule_task(self, cron: str, task_key: str, timestamp: datetime) -> bool:
-        return service.execute_schedule_task(self, cron, task_key, timestamp)
+        return service.execute_schedule_task(self, cron)
 
     def generate_html(self, value) -> None:
         return None
