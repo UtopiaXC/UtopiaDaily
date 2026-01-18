@@ -77,8 +77,8 @@ DEFAULT_CONFIGS = [
     },
     {
         "key": "ai_confidence",
-        "value": "80",
-        "default": "80",
+        "value": "60",
+        "default": "60",
         "description": "config.ai.confidence",
         "hint": "config.ai.confidence.hint",
         "tab": "ai_config",

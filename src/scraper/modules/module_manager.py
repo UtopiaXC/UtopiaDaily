@@ -2,6 +2,7 @@ import importlib.util
 import os
 import sys
 import subprocess
+import json
 from typing import Dict, Any, Tuple
 
 from src.utils.logger.logger import Log
@@ -373,6 +374,9 @@ class ModuleManager:
                     module = session.query(ScraperModule).filter_by(module_id=module_id).first()
                     if module:
                         module.is_enable = True
+                        
+                        # Add default AI configs if not present
+                        self._ensure_default_ai_configs(session, module)
 
                 return True
             else:
@@ -381,6 +385,69 @@ class ModuleManager:
         except Exception as e:
             Log.e(TAG, f"Error enabling module {module_id}", error=e)
             return False
+
+    def _ensure_default_ai_configs(self, session, module):
+        """Ensure default AI configurations exist for the module."""
+        default_configs = [
+            {
+                "key": "override_ai_config",
+                "value": "false",
+                "description": "config.ai.override",
+                "hint": "config.ai.override.hint",
+                "type": "boolean",
+                "options": None,
+                "regex": None
+            },
+            {
+                "key": "ai_model",
+                "value": "None",
+                "description": "config.ai.model",
+                "hint": "config.ai.model.hint",
+                "type": "model_select",
+                "options": [], 
+                "regex": None
+            },
+            {
+                "key": "ai_confidence",
+                "value": "60",
+                "description": "config.ai.confidence",
+                "hint": "config.ai.confidence.hint",
+                "type": "int",
+                "options": None,
+                "regex": None
+            },
+            {
+                "key": "ai_tags",
+                "value": "{\"groups\": [], \"tags\": []}",
+                "description": "config.ai.tags",
+                "hint": "config.ai.tags.hint",
+                "type": "json",
+                "options": None,
+                "regex": None
+            }
+        ]
+
+        for conf in default_configs:
+            existing = session.query(ScraperModuleConfig).filter_by(
+                module_id=module.id, 
+                config_key=conf["key"]
+            ).first()
+            
+            if not existing:
+                new_config = ScraperModuleConfig(
+                    module_id=module.id,
+                    config_key=conf["key"],
+                    description=conf["description"],
+                    type=conf["type"],
+                    options=conf["options"],
+                    value=conf["value"],
+                    hint=conf["hint"],
+                    regex=conf["regex"],
+                    source="default",
+                    is_override=False
+                )
+                session.add(new_config)
+                Log.i(TAG, f"[{module.module_id}] Added default config: {conf['key']}")
 
     def install_module_requirements(self, module_id, requirements_file):
         module_info = self.get_module_info(module_id)

@@ -31,11 +31,11 @@
                                                class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600 disabled:cursor-not-allowed">
                                     </td>
                                     <td class="px-4 py-3 font-medium text-gray-900 dark:text-white truncate"
-                                        @mouseenter="showTooltip($event, model.name)"
+                                        @mouseenter="showTooltip($event, isInstalled(model.hf_repo) ? model.name + ' (' + t('common.installed') + ')' : model.name)"
                                         @mousemove="moveTooltip($event)"
                                         @mouseleave="hideTooltip">
                                         {{ model.name }}
-                                        <span v-if="isInstalled(model.hf_repo)" class="ml-2 text-xs text-green-600 dark:text-green-400">(Installed)</span>
+                                        <span v-if="isInstalled(model.hf_repo)" class="ml-2 text-xs text-green-600 dark:text-green-400">({{ t('common.installed') }})</span>
                                     </td>
                                     <td class="px-4 py-3 text-gray-500 dark:text-gray-400 truncate">
                                         {{ model.size_about }}
@@ -116,7 +116,10 @@ export default {
         },
         isInstalled(repoId) {
             const name = repoId.split('/').pop();
-            return this.installedModels.includes(name);
+            return this.installedModels.some(m => {
+                const installedName = (m && typeof m === 'object') ? m.value : m;
+                return installedName === name;
+            });
         },
         confirm() {
             this.$emit('confirm', this.selectedModel);
