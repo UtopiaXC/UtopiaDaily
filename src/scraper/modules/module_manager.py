@@ -390,10 +390,10 @@ class ModuleManager:
         """Ensure default AI configurations exist for the module."""
         default_configs = [
             {
-                "key": "override_ai_config",
+                "key": "override_system_config",
                 "value": "false",
-                "description": "config.ai.override",
-                "hint": "config.ai.override.hint",
+                "description": "scraper.config.override.system",
+                "hint": "scraper.config.override.system.hint",
                 "type": "boolean",
                 "options": None,
                 "regex": None

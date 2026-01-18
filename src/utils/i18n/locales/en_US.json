@@ -177,6 +177,8 @@
     "scraper.config.general": "General Config",
     "scraper.config.custom": "Module Config",
     "scraper.config.test": "Test Config",
+    "scraper.config.override.system": "Override System Settings",
+    "scraper.config.override.system.hint": "If enabled, the module will use the configuration specified here instead of the system-wide settings. If you do not need this, please keep it disabled.",
 
     "user_manager.users": "Users",
     "user_manager.roles": "Roles",

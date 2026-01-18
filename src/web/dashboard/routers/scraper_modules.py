@@ -9,6 +9,7 @@ from src.utils.logger.logger import Log
 from src.scraper.modules.module_manager import ModuleManager
 from src.web.dependencies import get_db
 from src.utils.event import EventManager
+from src.utils.classification.classification import list_local_models
 
 router = APIRouter(prefix="/api/dashboard/scraper/modules", tags=["Scraper Modules"])
 
@@ -30,11 +31,21 @@ async def get_module_detail(module_id: str, db: Session = Depends(get_db)):
     configs = db.query(ScraperModuleConfig).filter(ScraperModuleConfig.module_id == module.id).all()
     config_dict = {}
     for cfg in configs:
+        options = cfg.options
+        if cfg.config_key == "ai_model":
+            options = list_local_models()
+
+        value = cfg.value
+        # Convert boolean strings to actual booleans for frontend
+        if cfg.type == "boolean":
+            if isinstance(value, str):
+                value = value.lower() == "true"
+        
         config_dict[cfg.config_key] = {
-            "value": cfg.value,
+            "value": value,
             "description": cfg.description,
             "type": cfg.type,
-            "options": cfg.options,
+            "options": options,
             "hint": cfg.hint,
             "regular": cfg.regex,
             "source": cfg.source,
@@ -148,7 +159,12 @@ async def update_module_config(module_id: str, req: Request, config: Dict[str, A
             ScraperModuleConfig.config_key == key
         ).first()
         if cfg_item:
-            cfg_item.value = value
+            # Convert boolean back to string for storage if needed, or keep as is if DB handles it
+            # Assuming DB stores as string based on previous context
+            if cfg_item.type == "boolean" and isinstance(value, bool):
+                cfg_item.value = str(value).lower()
+            else:
+                cfg_item.value = value
     
     db.commit()
     

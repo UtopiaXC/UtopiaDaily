@@ -33,7 +33,7 @@
     "config.ai.model.desc.labse": "对小语种支持很好。内存与算力需求较高。",
     "config.ai.model.desc.bge_small_zh_v1_5": "智源研究院出品。体积小，中文俚语和黑话支持较好。",
     "config.ai.model.desc.text2vec_base_sentence": "经典中文模型，兼容性好。",
-    "config.ai.model.desc.minilm_l6_v2": "体积小，速度快，下性能强",
+    "config.ai.model.desc.minilm_l6_v2": "体积小，速度快，英语下性能强",
     "config.ai.model.desc.mpnet_base_v2": "英文准确度高",
     "config.ai.model.desc.snowflake_arctic_xs": "Snowflake发布的超微型模型，针对商业SQL和企业文档优化",
     "config.ai.model.desc.minilm_l3_v2": "网络规模小，体积小，适合嵌入式设备或其他低性能设备，精度一般。",
@@ -179,6 +179,8 @@
     "scraper.config.general": "通用配置",
     "scraper.config.custom": "模组配置",
     "scraper.config.test": "测试配置",
+    "scraper.config.override.system": "是否覆盖系统设置",
+    "scraper.config.override.system.hint": "如果覆盖，则相关配置在被使用的时候将采用模组指定的配置。如果您没有需求，请不要开启。",
 
     "user_manager.users": "用户列表",
     "user_manager.roles": "角色列表",

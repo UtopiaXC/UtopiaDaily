@@ -1,13 +1,15 @@
 <template>
     <div class="relative inline-block text-left w-full" ref="dropdown">
-        <button v-if="variant === 'default'" @click="toggle" type="button"
-            class="flex items-center justify-between w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition shadow-sm text-gray-900 dark:text-white">
+        <button v-if="variant === 'default'" @click="!disabled && toggle()" type="button"
+            :disabled="disabled"
+            class="flex items-center justify-between w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition shadow-sm text-gray-900 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed">
             <span class="block truncate mr-2">{{ selectedLabel }}</span>
             <span class="material-icons text-gray-400 dark:text-gray-300 text-sm">expand_more</span>
         </button>
 
-        <button v-else-if="variant === 'icon'" @click="toggle" type="button"
-            class="p-2 rounded-full text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition">
+        <button v-else-if="variant === 'icon'" @click="!disabled && toggle()" type="button"
+            :disabled="disabled"
+            class="p-2 rounded-full text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition disabled:opacity-50 disabled:cursor-not-allowed">
             <span class="material-icons">language</span>
         </button>
 
@@ -45,6 +47,10 @@ export default {
         variant: {
             type: String,
             default: 'default'
+        },
+        disabled: {
+            type: Boolean,
+            default: false
         }
     },
     emits: ['update:modelValue'],
@@ -69,6 +75,7 @@ export default {
     },
     methods: {
         toggle() {
+            if (this.disabled) return;
             this.isOpen = !this.isOpen;
         },
         select(option) {
