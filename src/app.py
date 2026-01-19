@@ -6,7 +6,7 @@ import signal
 from src.utils.logger.logger import Log
 from src.utils.env_manage.env_manager import EnvManager
 
-TAG="APP"
+TAG = "APP"
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.dirname(current_dir)
@@ -23,9 +23,14 @@ from src.utils.event import EventManager
 from src.utils.classification.classification import ensure_models_dir, check_current_model
 
 children_processes = []
+main_pid = None
+
 
 def signal_handler(sig, frame):
-    Log.w(TAG,f"Received signal: {sig}, stopping system...")
+    if main_pid is not None and os.getpid() != main_pid:
+        sys.exit(0)
+
+    Log.w(TAG, f"Received signal: {sig}, stopping system...")
     EventManager.record(
         level=EventManager.LEVEL_WARNING,
         category=EventManager.CATEGORY_SYSTEM,
@@ -38,30 +43,35 @@ def signal_handler(sig, frame):
 
 def cleanup_and_exit():
     for p in children_processes:
-        if p.is_alive():
-            Log.w(TAG, f"Stopping process: {p.name} (PID: {p.pid})...")
-            p.terminate()
-            p.join(timeout=2)
+        try:
             if p.is_alive():
-                Log.w(TAG, f"Killing process: {p.name}")
-                p.kill()
+                Log.w(TAG, f"Stopping process: {p.name} (PID: {p.pid})...")
+                p.terminate()
+                p.join(timeout=2)
+                if p.is_alive():
+                    Log.w(TAG, f"Killing process: {p.name}")
+                    p.kill()
+        except Exception as e:
+            Log.e(TAG, f"Error cleaning up process {p.name}: {e}")
 
-    Log.w(TAG,"System Stopped")
+    Log.w(TAG, "System Stopped")
     sys.exit(0)
 
 
 def main():
+    global main_pid
+    main_pid = os.getpid()
+
     try:
         Log.i(TAG, "Initializing models directory...")
         ensure_models_dir()
-        
+
         Log.i(TAG, "Initializing database and checking migrations...")
         migration_manager.run_migrations()
-        
+
         Log.i(TAG, "Checking current model configuration...")
         check_current_model()
     except Exception as e:
-        # Try to record event before dying, though DB might be broken
         try:
             EventManager.record(
                 level=EventManager.LEVEL_FATAL,
@@ -86,15 +96,18 @@ def main():
     except Exception as e:
         Log.e(TAG, "Failed to initialize system configs", error=e)
         Log.set_level("INFO")
+
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
+
     scraper_process = multiprocessing.Process(
         target=run_scraper_service,
         name="ScraperService"
     )
     scraper_process.start()
     children_processes.append(scraper_process)
-    Log.i(TAG,f"Scraper Process up: {scraper_process.pid}")
+    Log.i(TAG, f"Scraper Process up: {scraper_process.pid}")
+
     web_process = multiprocessing.Process(
         target=run_web_server,
         kwargs={"host": "0.0.0.0", "port": 8000},
@@ -102,7 +115,7 @@ def main():
     )
     web_process.start()
     children_processes.append(web_process)
-    Log.i(TAG,f"Web Process up: {web_process.pid}")
+    Log.i(TAG, f"Web Process up: {web_process.pid}")
 
     EventManager.record(
         level=EventManager.LEVEL_NORMAL,
@@ -117,7 +130,7 @@ def main():
             time.sleep(2)
             for p in children_processes:
                 if not p.is_alive():
-                    Log.e(TAG,f"Process Died:{p.name}")
+                    Log.e(TAG, f"Process Died:{p.name}")
                     EventManager.record(
                         level=EventManager.LEVEL_FATAL,
                         category=EventManager.CATEGORY_SYSTEM,
@@ -128,7 +141,7 @@ def main():
                     cleanup_and_exit()
 
     except Exception as e:
-        Log.e(TAG,f"Main Process Exception: {e}")
+        Log.e(TAG, f"Main Process Exception: {e}")
         EventManager.record(
             level=EventManager.LEVEL_FATAL,
             category=EventManager.CATEGORY_SYSTEM,
@@ -142,5 +155,5 @@ def main():
 
 if __name__ == "__main__":
     Log.setup_global_exception_handler()
-    Log.i(TAG,f"Utopia Daily starting...")
+    Log.i(TAG, f"Utopia Daily starting...")
     main()

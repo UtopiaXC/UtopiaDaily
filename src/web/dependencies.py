@@ -1,5 +1,4 @@
 from fastapi import Request, HTTPException, Depends
-from src.utils.constants.permissions import Permissions
 from src.database.connection import system_db_manager
 
 def get_db():
@@ -8,6 +7,10 @@ def get_db():
         yield session
     finally:
         session.close()
+
+async def get_async_db():
+    async with system_db_manager.get_async_session() as session:
+        yield session
 
 def get_current_user(request: Request):
     user = getattr(request.state, "user", None)

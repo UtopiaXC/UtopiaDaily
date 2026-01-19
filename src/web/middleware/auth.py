@@ -1,6 +1,8 @@
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
+from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from src.utils.security.jwt_util import decode_access_token
 from src.database.connection import system_db_manager
 from src.database.models.user import User
@@ -23,20 +25,27 @@ class AuthMiddleware(BaseHTTPMiddleware):
             
             if payload:
                 user_id = payload.get("sub")
-                db = system_db_manager.get_session()
-                try:
-                    user = db.query(User).filter(User.id == user_id, User.is_active == True).first()
-                    if user:
-                        request.state.user = user
-                        perms = user.role.permissions
-                        if isinstance(perms, dict):
-                            request.state.permissions = [k for k, v in perms.items() if v]
-                        else:
-                            request.state.permissions = perms or []
-                except Exception as e:
-                    Log.e(TAG, "DB Error during auth", error=e)
-                finally:
-                    db.close()
+                
+                # 使用原生异步会话
+                async with system_db_manager.get_async_session() as session:
+                    try:
+                        # 使用 selectinload 预加载 role 关系，避免 N+1 问题和异步 lazy load 错误
+                        stmt = select(User).options(selectinload(User.role)).where(User.id == user_id, User.is_active == True)
+                        result = await session.execute(stmt)
+                        user = result.scalars().first()
+                        
+                        if user:
+                            # 此时 user.role 已经加载，可以直接访问
+                            raw_perms = user.role.permissions
+                            if isinstance(raw_perms, dict):
+                                permissions = [k for k, v in raw_perms.items() if v]
+                            else:
+                                permissions = raw_perms or []
+                                
+                            request.state.user = user
+                            request.state.permissions = permissions
+                    except Exception as e:
+                        Log.e(TAG, "Async DB Error during auth", error=e)
 
         if path.startswith("/api/dashboard") and not user:
              public_endpoints = [

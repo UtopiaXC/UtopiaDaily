@@ -1,24 +1,16 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import Response
-from sqlalchemy.orm import Session
-from src.database.connection import system_db_manager
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from src.database.models import User, UserRole
 from src.web.dashboard.schemas import LoginRequest, LoginResponse, UserResponse
 from src.web.dashboard.services.auth_service import AuthService
 from src.utils.security.captcha import generate_captcha
 from src.utils.logger.logger import Log
 from src.utils.i18n import i18n
-from src.web.dependencies import get_current_user
+from src.web.dependencies import get_async_db, get_current_user
 
 router = APIRouter(prefix="/api/dashboard/auth", tags=["Dashboard Authentication"])
 auth_service = AuthService()
-
-def get_db():
-    db = system_db_manager.get_session()
-    try:
-        yield db
-    finally:
-        db.close()
 
 def get_locale(req: Request) -> str:
     accept_language = req.headers.get("accept-language")
@@ -34,12 +26,12 @@ def get_captcha():
     return {"captcha_id": captcha_id, "svg": svg}
 
 @router.post("/login", response_model=LoginResponse)
-def login(request: LoginRequest, req: Request, db: Session = Depends(get_db)):
+async def login(request: LoginRequest, req: Request, db: AsyncSession = Depends(get_async_db)):
     locale = get_locale(req)
     try:
         ip = req.client.host
         ua = req.headers.get("user-agent", "unknown")
-        response = auth_service.login(db, request, ip, ua)
+        response = await auth_service.login(db, request, ip, ua)
         if not response:
             detail = i18n.t("login.invalid_credentials", locale=locale)
             raise HTTPException(status_code=401, detail=detail)
@@ -64,12 +56,16 @@ def login(request: LoginRequest, req: Request, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=detail)
 
 @router.get("/me", response_model=UserResponse)
-def get_current_user_info(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    current_user = db.query(User).filter(User.id == user.id).first()
+async def get_current_user_info(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_async_db)):
+    result = await db.execute(select(User).where(User.id == user.id))
+    current_user = result.scalars().first()
+    
     if not current_user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    role = db.query(UserRole).filter(UserRole.id == current_user.role_id).first()
+    role_result = await db.execute(select(UserRole).where(UserRole.id == current_user.role_id))
+    role = role_result.scalars().first()
+
     return UserResponse(
         id=current_user.id,
         username=current_user.username,

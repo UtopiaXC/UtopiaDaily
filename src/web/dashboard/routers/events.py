@@ -1,15 +1,15 @@
-from fastapi import APIRouter, Depends, Query, HTTPException
-from sqlalchemy.orm import Session
-from sqlalchemy import desc, asc, or_
-from typing import Optional, List
-from src.web.dependencies import get_db, get_current_user
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import desc, asc, or_, select, func
+from typing import Optional
+from src.web.dependencies import get_async_db, get_current_user
 from src.database.models import SystemEvent, User
 from src.web.dashboard.schemas import SystemEventResponse, PaginatedResponse
 
 router = APIRouter(prefix="/events", tags=["events"])
 
 @router.get("", response_model=PaginatedResponse[SystemEventResponse])
-def get_events(
+async def get_events(
     page: int = 1,
     page_size: int = 20,
     level: Optional[str] = None,
@@ -19,23 +19,23 @@ def get_events(
     search: Optional[str] = None,
     sort_by: Optional[str] = "created_at",
     sort_order: Optional[str] = "desc",
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     current_user: User = Depends(get_current_user)
 ):
-    query = db.query(SystemEvent)
+    stmt = select(SystemEvent)
 
     if level:
-        query = query.filter(SystemEvent.level == level)
+        stmt = stmt.where(SystemEvent.level == level)
     if category:
-        query = query.filter(SystemEvent.category == category)
+        stmt = stmt.where(SystemEvent.category == category)
     if source_id:
-        query = query.filter(SystemEvent.source_id == source_id)
+        stmt = stmt.where(SystemEvent.source_id == source_id)
     if is_resolved is not None:
-        query = query.filter(SystemEvent.is_resolved == is_resolved)
+        stmt = stmt.where(SystemEvent.is_resolved == is_resolved)
 
     if search:
         search_term = f"%{search}%"
-        query = query.filter(
+        stmt = stmt.where(
             or_(
                 SystemEvent.summary.ilike(search_term),
                 SystemEvent.event_type.ilike(search_term),
@@ -43,18 +43,23 @@ def get_events(
             )
         )
 
-    total = query.count()
+    # Count total
+    count_stmt = select(func.count()).select_from(stmt.subquery())
+    total_result = await db.execute(count_stmt)
+    total = total_result.scalar()
 
     if sort_by and hasattr(SystemEvent, sort_by):
         column = getattr(SystemEvent, sort_by)
         if sort_order == "asc":
-            query = query.order_by(asc(column))
+            stmt = stmt.order_by(asc(column))
         else:
-            query = query.order_by(desc(column))
+            stmt = stmt.order_by(desc(column))
     else:
-        query = query.order_by(desc(SystemEvent.created_at))
+        stmt = stmt.order_by(desc(SystemEvent.created_at))
     
-    events = query.offset((page - 1) * page_size).limit(page_size).all()
+    stmt = stmt.offset((page - 1) * page_size).limit(page_size)
+    result = await db.execute(stmt)
+    events = result.scalars().all()
         
     return PaginatedResponse(
         items=[event.to_dict() for event in events],
@@ -64,15 +69,16 @@ def get_events(
     )
 
 @router.post("/{event_id}/resolve")
-def resolve_event(
+async def resolve_event(
     event_id: str,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     current_user: User = Depends(get_current_user)
 ):
-    event = db.query(SystemEvent).filter(SystemEvent.id == event_id).first()
+    result = await db.execute(select(SystemEvent).where(SystemEvent.id == event_id))
+    event = result.scalars().first()
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
         
     event.is_resolved = True
-    db.commit()
+    await db.commit()
     return {"status": "success"}

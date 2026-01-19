@@ -3,7 +3,8 @@ from sqlalchemy import create_engine, event
 from sqlalchemy.engine import URL
 from sqlalchemy.orm import sessionmaker, scoped_session, declarative_base
 from sqlalchemy.exc import OperationalError
-from contextlib import contextmanager
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from contextlib import contextmanager, asynccontextmanager
 from src.utils.logger.logger import Log
 from src.utils.env_manage.env_manager import EnvManager
 
@@ -17,14 +18,15 @@ DATA_DB_DIR = os.path.join(PROJECT_ROOT, "database", "data")
 SYSTEM_DB_PATH = os.path.join(SYSTEM_DB_DIR, "system.db")
 DATA_DB_PATH = os.path.join(DATA_DB_DIR, "data.db")
 
-def get_db_url(db_name_suffix=""):
+def get_db_url(db_name_suffix="", is_async=False):
     db_type = EnvManager.get_env("DB_TYPE", "SQLITE").upper()
     
     if db_type == "SQLITE":
+        driver = "sqlite+aiosqlite" if is_async else "sqlite"
         if db_name_suffix == "system":
-            return f"sqlite:///{SYSTEM_DB_PATH}"
+            return f"{driver}:///{SYSTEM_DB_PATH}"
         else:
-            return f"sqlite:///{DATA_DB_PATH}"
+            return f"{driver}:///{DATA_DB_PATH}"
             
     db_host = EnvManager.get_env("DB_HOST", "")
     db_port = EnvManager.get_env("DB_PORT", "")
@@ -42,8 +44,9 @@ def get_db_url(db_name_suffix=""):
     target_db_name = f"{db_name}_{db_name_suffix}" if db_name_suffix else db_name
 
     if db_type == "MYSQL":
+        driver = "mysql+aiomysql" if is_async else "mysql+pymysql"
         return URL.create(
-            drivername="mysql+pymysql",
+            drivername=driver,
             username=db_user,
             password=db_password,
             host=db_host,
@@ -52,8 +55,9 @@ def get_db_url(db_name_suffix=""):
         ).render_as_string(hide_password=False)
     
     elif db_type == "POSTGRESQL":
+        driver = "postgresql+asyncpg" if is_async else "postgresql"
         return URL.create(
-            drivername="postgresql",
+            drivername=driver,
             username=db_user,
             password=db_password,
             host=db_host,
@@ -63,24 +67,31 @@ def get_db_url(db_name_suffix=""):
     
     else:
         Log.w(TAG, f"Unknown DB_TYPE: {db_type}, falling back to SQLITE")
+        driver = "sqlite+aiosqlite" if is_async else "sqlite"
         if db_name_suffix == "system":
-            return f"sqlite:///{SYSTEM_DB_PATH}"
+            return f"{driver}:///{SYSTEM_DB_PATH}"
         else:
-            return f"sqlite:///{DATA_DB_PATH}"
+            return f"{driver}:///{DATA_DB_PATH}"
 
-SYSTEM_DB_URL = get_db_url("system")
-DATA_DB_URL = get_db_url("data")
+SYSTEM_DB_URL = get_db_url("system", is_async=False)
+DATA_DB_URL = get_db_url("data", is_async=False)
+SYSTEM_ASYNC_DB_URL = get_db_url("system", is_async=True)
+DATA_ASYNC_DB_URL = get_db_url("data", is_async=True)
 
-Log.w(TAG,SYSTEM_DB_URL)
+Log.w(TAG, f"Sync URL: {SYSTEM_DB_URL}")
+Log.w(TAG, f"Async URL: {SYSTEM_ASYNC_DB_URL}")
 
 Base = declarative_base()
 
 class DatabaseManager:
-    def __init__(self, db_url, tag_suffix):
+    def __init__(self, db_url, async_db_url, tag_suffix):
         self.db_url = db_url
+        self.async_db_url = async_db_url
         self.tag = f"{TAG}_{tag_suffix}"
         self._engine = None
+        self._async_engine = None
         self._session_factory = None
+        self._async_session_factory = None
 
     def _ensure_directory(self):
         if "sqlite" in self.db_url:
@@ -96,6 +107,7 @@ class DatabaseManager:
 
         self._ensure_directory()
 
+        # Sync Engine Initialization
         connect_args = {}
         if "sqlite" in self.db_url:
             connect_args = {"check_same_thread": False}
@@ -107,7 +119,7 @@ class DatabaseManager:
             echo=False
         )
 
-        # Enable WAL mode for SQLite
+        # Enable WAL mode for SQLite (Sync)
         if "sqlite" in self.db_url:
             @event.listens_for(self._engine, "connect")
             def set_sqlite_pragma(dbapi_connection, connection_record):
@@ -141,11 +153,20 @@ class DatabaseManager:
         self._session_factory = scoped_session(
             sessionmaker(autocommit=False, autoflush=False, bind=self._engine)
         )
+
+        self._async_engine = create_async_engine(
+            self.async_db_url,
+            echo=False,
+            pool_pre_ping=True
+        )
         
-        Log.i(self.tag, f"Database initialized at {self.db_url}")
+        self._async_session_factory = async_sessionmaker(
+            self._async_engine, expire_on_commit=False, class_=AsyncSession
+        )
+
+        Log.i(self.tag, f"Database initialized at {self.db_url} (Async: {self.async_db_url})")
 
     def create_tables(self, base=Base):
-        """Explicitly create tables bound to this engine"""
         if not self._engine:
             self.init_db()
         base.metadata.create_all(bind=self._engine)
@@ -154,13 +175,18 @@ class DatabaseManager:
         if not self._session_factory:
             self.init_db()
         return self._session_factory()
+        
+    def get_async_session(self) -> AsyncSession:
+        if not self._async_session_factory:
+            self.init_db()
+        return self._async_session_factory()
 
     def close(self):
         if self._session_factory:
             self._session_factory.remove()
 
-system_db_manager = DatabaseManager(SYSTEM_DB_URL, "SYSTEM")
-data_db_manager = DatabaseManager(DATA_DB_URL, "DATA")
+system_db_manager = DatabaseManager(SYSTEM_DB_URL, SYSTEM_ASYNC_DB_URL, "SYSTEM")
+data_db_manager = DatabaseManager(DATA_DB_URL, DATA_ASYNC_DB_URL, "DATA")
 
 @contextmanager
 def system_session_scope():
@@ -187,3 +213,16 @@ def data_session_scope():
         raise
     finally:
         session.close()
+
+@asynccontextmanager
+async def system_async_session_scope():
+    session = system_db_manager.get_async_session()
+    try:
+        yield session
+        await session.commit()
+    except Exception as e:
+        Log.e("DB_ASYNC_SESSION_SYSTEM", "Async session rollback due to exception", error=e)
+        await session.rollback()
+        raise
+    finally:
+        await session.close()

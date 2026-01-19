@@ -1,14 +1,16 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, BackgroundTasks
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from starlette.concurrency import run_in_threadpool
 from typing import List, Optional, Union
 import json
 from pydantic import BaseModel, field_validator
-from src.database.connection import system_db_manager
 from src.database.models import SystemConfig
 from src.utils.logger.logger import Log
 from src.utils.event import EventManager
 from src.utils.classification.classification import list_local_models
 from src.utils.classification.download_model import download_model_from_hf, get_default_models_json
+from src.web.dependencies import get_async_db
 
 router = APIRouter(prefix="/api/dashboard/system-config", tags=["System Config"])
 
@@ -35,34 +37,44 @@ class ConfigUpdate(BaseModel):
 class ModelDownloadRequest(BaseModel):
     repo_id: str
 
-def get_db():
-    db = system_db_manager.get_session()
-    try:
-        yield db
-    finally:
-        db.close()
-
 @router.get("/", response_model=List[ConfigItem])
-def get_configs(tab: Optional[str] = None, group: Optional[str] = None, db: Session = Depends(get_db)):
-    query = db.query(SystemConfig)
+async def get_configs(tab: Optional[str] = None, group: Optional[str] = None, db: AsyncSession = Depends(get_async_db)):
+    stmt = select(SystemConfig)
     if tab:
-        query = query.filter(SystemConfig.tab == tab)
+        stmt = stmt.where(SystemConfig.tab == tab)
     if group:
-        query = query.filter(SystemConfig.group == group)
-    query = query.order_by(SystemConfig.order.asc())
+        stmt = stmt.where(SystemConfig.group == group)
+    stmt = stmt.order_by(SystemConfig.order.asc())
     
-    configs = query.all()
+    result = await db.execute(stmt)
+    configs = result.scalars().all()
     
-    # Dynamic options for ai_model
+    config_items = []
     for conf in configs:
+        options = conf.options
         if conf.key == "ai_model":
-            conf.options = list_local_models()
+            options = await run_in_threadpool(list_local_models)
             
-    return configs
+        config_items.append(ConfigItem(
+            key=conf.key,
+            value=conf.value,
+            description=conf.description,
+            hint=conf.hint,
+            tab=conf.tab,
+            group=conf.group,
+            type=conf.type,
+            options=options,
+            is_editable=conf.is_editable,
+            order=conf.order
+        ))
+            
+    return config_items
 
 @router.put("/{key}")
-def update_config(key: str, update: ConfigUpdate, req: Request, db: Session = Depends(get_db)):
-    config = db.query(SystemConfig).filter(SystemConfig.key == key).first()
+async def update_config(key: str, update: ConfigUpdate, req: Request, db: AsyncSession = Depends(get_async_db)):
+    result = await db.execute(select(SystemConfig).where(SystemConfig.key == key))
+    config = result.scalars().first()
+    
     if not config:
         raise HTTPException(status_code=404, detail="Config not found")
     
@@ -99,13 +111,13 @@ def update_config(key: str, update: ConfigUpdate, req: Request, db: Session = De
             raise HTTPException(status_code=400, detail="Invalid JSON format")
 
     config.value = new_value
-    db.commit()
+    await db.commit()
 
     if key == "log_level":
         Log.set_level(new_value)
         
     current_user = getattr(req.state, "user", None)
-    EventManager.record(
+    await EventManager.record_async(
         level=EventManager.LEVEL_NORMAL,
         category=EventManager.CATEGORY_SYSTEM,
         event_type="config_updated",
@@ -117,23 +129,24 @@ def update_config(key: str, update: ConfigUpdate, req: Request, db: Session = De
     return {"status": "success", "key": key, "new_value": update.value}
 
 @router.get("/ai-models")
-def get_ai_models():
-    return list_local_models()
+async def get_ai_models():
+    # File system operation, run in threadpool
+    return await run_in_threadpool(list_local_models)
 
 @router.get("/default-models")
-def get_default_models():
-    return get_default_models_json()
+async def get_default_models():
+    # File system operation, run in threadpool
+    return await run_in_threadpool(get_default_models_json)
 
 @router.post("/download-model")
-def download_model(request: ModelDownloadRequest, req: Request):
+async def download_model(request: ModelDownloadRequest, req: Request):
     current_user = getattr(req.state, "user", None)
     
     try:
-        # Synchronous download as requested
-        success, msg = download_model_from_hf(request.repo_id)
+        success, msg = await run_in_threadpool(download_model_from_hf, request.repo_id)
         
         if success:
-            EventManager.record(
+            await EventManager.record_async(
                 level=EventManager.LEVEL_NORMAL,
                 category=EventManager.CATEGORY_SYSTEM,
                 event_type="model_download_success",
@@ -142,7 +155,7 @@ def download_model(request: ModelDownloadRequest, req: Request):
             )
             return {"status": "success", "message": msg}
         else:
-            EventManager.record(
+            await EventManager.record_async(
                 level=EventManager.LEVEL_CRITICAL,
                 category=EventManager.CATEGORY_SYSTEM,
                 event_type="model_download_failed",
@@ -153,7 +166,7 @@ def download_model(request: ModelDownloadRequest, req: Request):
             raise HTTPException(status_code=500, detail=f"Download failed: {msg}")
             
     except Exception as e:
-         EventManager.record(
+         await EventManager.record_async(
             level=EventManager.LEVEL_CRITICAL,
             category=EventManager.CATEGORY_SYSTEM,
             event_type="model_download_failed",

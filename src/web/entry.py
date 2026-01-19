@@ -89,7 +89,7 @@ def create_app() -> FastAPI:
             source_id="web_entry",
             is_resolved=False
         )
-        Log.fatal(TAG,f"No frontend gist found! Please run npm run build in {dashboard_src_dir} first!")
+        Log.fatal(TAG,f"No frontend dist found! Please run npm run build in {dashboard_src_dir} first!")
 
     if dashboard_dir_to_mount:
         @app.get("/dashboard", include_in_schema=False)
