@@ -46,6 +46,7 @@ class ModuleContext:
     def save_structured_results(self, value, fingerprint=""):
         # TODO: Save to actual database
         Log.w(TAG, json.dumps(value, ensure_ascii=False))
+        Log.w(TAG, fingerprint)
         return {"status": "success"}
 
     def install_requirements(self, requirements_file: str):

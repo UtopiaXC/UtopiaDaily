@@ -115,11 +115,18 @@ def save_structured_results(self, value: Dict[str, Any], fingerprint: str = "") 
             "from": "引用来源",
             "datetime_released": "引用时间"
         },
+        "attachments" : [{
+            "original_url": original_media_url,
+            "converted_url":"",
+            "type": "image",
+            "store_policy": "store_and_replace"
+        }],
         "tags": [{"tag": "标签名", "confidence": 0.9}],
         "metadata": {}
     }
     ```
-*   **fingerprint**: 去重指纹（如 URL）。未提供时，系统会自动处理，但建议提供以防止重复抓取。
+*   **fingerprint**: 去重指纹（如 URL、哈希摘要）。如果您可保证数据来源是唯一的，您可以使用来源URL当时做指纹。或者您可以使用base_module中提供的generate_fingerprint方法来计算指纹。未提供时，系统会自动通过content计算哈希来保存为指纹，但建议提供以防止重复抓取。在调用打标方法前，请务必验证是否重复，不要重复打标，这会消耗大量计算性能。
+* 关于图片处理，您可以将content中的图片、视频（不建议）等的原始连接放在attachments，并指定store_policy。"store_only"表示只将图片保存到cache，但是后续拼接html与pdf等的时候依旧使用原始链接。"store_and_replace"表示系统将会把图片保存在cache中，并在拼接html与pdf的时候使用本地保存的图片而非使用标签从远程加载。需要注意的是，如果您重写了html的生成方法，可以使用converted_url来拼接html等。但是注意，convert_url是系统管理的吗，如果模组保存的时候填写了converted_url，系统会自动覆盖，因此保存的时候不应填写它，甚至不应该使用这个标签。
 
 #### `mark_message_tag`
 调用系统 AI 模型为文本生成标签。

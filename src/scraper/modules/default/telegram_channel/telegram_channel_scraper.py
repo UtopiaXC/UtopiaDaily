@@ -110,7 +110,30 @@ def parse_single_message(msg, channel_display_name, target_tz_offset):
         title_text = p_title if p_title else (f"From {p_site_name}" if p_site_name else "Link Share")
         final_content = p_desc if p_desc else ""
     else:
-        title_text = p_title if p_title else (raw_content[:30] if raw_content else "Untitled")
+        # Title generation logic
+        if p_title:
+            title_text = p_title
+        else:
+            # Try to find the first period
+            # Remove markdown links/images for title extraction to be cleaner
+            clean_raw = re.sub(r'!\[.*?\]\(.*?\)', '', raw_content)
+            clean_raw = re.sub(r'\[(.*?)\]\(.*?\)', r'\1', clean_raw)
+            clean_raw = clean_raw.replace('\n', ' ').strip()
+            
+            period_idx = -1
+            for i, char in enumerate(clean_raw):
+                if char in ['.', '。', '!', '！', '?', '？']:
+                    period_idx = i
+                    break
+            
+            if period_idx != -1 and period_idx < 80:
+                title_text = clean_raw[:period_idx+1]
+            else:
+                title_text = clean_raw[:80]
+                
+            if not title_text:
+                title_text = "Untitled"
+
         final_content = f"{raw_content}\n\n> {p_desc}" if (
                 p_title and p_desc and p_desc not in raw_content) else raw_content
 
@@ -119,9 +142,14 @@ def parse_single_message(msg, channel_display_name, target_tz_offset):
 
     clean_title = title_text.replace('\n', ' ').strip()[:57]
 
+    # Collect images AND append to content
+    images = []
     md_lines = []
     if final_content: md_lines.append(final_content)
-    if p_image_url: md_lines.append(f"![image]({p_image_url})")
+
+    if p_image_url:
+        images.append(p_image_url)
+        md_lines.append(f"![image]({p_image_url})")
 
     photo_wraps = msg.find_all('a', class_='tgme_widget_message_photo_wrap')
     for photo in photo_wraps:
@@ -129,21 +157,25 @@ def parse_single_message(msg, channel_display_name, target_tz_offset):
         match = re.search(r"url\(['\"]?(.*?)['\"]?\)", style)
         if match:
             img_url = match.group(1)
+            if img_url not in images:
+                images.append(img_url)
+            
             # Avoid duplicating the preview image if it's the same
             if img_url != p_image_url:
                 md_lines.append(f"![image]({img_url})")
 
     full_md = "\n\n".join(md_lines)
-
+    
     return {
         "title": clean_title,
-        "summary": final_content[:100] if final_content else "",
+        "summary": final_content[:150] if final_content else "",
         "source": channel_display_name,
         "from_url": post_link,
         "content": full_md,
         "content_type": "markdown",
         "datetime_released": dt_utc.isoformat(),
         "quotation": quotation_data,
+        "images": images, # Return images list for attachments
         "tags": [],
         "metadata": {
             "raw_html": str(msg)

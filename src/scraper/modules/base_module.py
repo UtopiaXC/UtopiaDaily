@@ -1,6 +1,7 @@
 from abc import ABC
 from typing import Any, List, Dict, Optional, Tuple, Union
 from datetime import datetime
+import hashlib
 
 class BaseModule(ABC):
 
@@ -71,6 +72,22 @@ class BaseModule(ABC):
         Save structured results to the database.
         """
         return self._context.save_structured_results(value, fingerprint)
+
+    def generate_fingerprint(self, content: str) -> str:
+        """
+        Generate a secure fingerprint for the given content using BLAKE2b.
+        """
+        if not content:
+            return ""
+        # Using blake2b with a digest size of 32 bytes (64 hex chars) is efficient and secure enough for this purpose
+        return hashlib.blake2b(content.encode('utf-8'), digest_size=32).hexdigest()
+
+    def is_fingerprint_stored(self, fingerprint: str) -> bool:
+        """
+        Check if the fingerprint is already stored in the database.
+        """
+        # TODO: Implement database check
+        return False
 
     # ==========================================
     # Listener Interface (To be implemented)

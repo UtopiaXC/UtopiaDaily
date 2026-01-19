@@ -143,12 +143,49 @@ def execute_schedule_task(module, task_key: str):
                                              )
             try:
                 for message in messages:
+                    # Generate fingerprint
+                    fingerprint = message.get('from_url')
+                    if not fingerprint:
+                        fingerprint = module.generate_fingerprint(message.get('content', ''))
+                    
+                    # Check duplication
+                    if module.is_fingerprint_stored(fingerprint):
+                        Log.d(TAG, f"Skipping duplicate content: {fingerprint}")
+                        continue
+
+                    # Process attachments
+                    attachments = []
+                    if 'images' in message and message['images']:
+                        for img_url in message['images']:
+                            attachments.append({
+                                "original_url": img_url,
+                                "converted_url": "",
+                                "type": "image",
+                                "store_policy": "store_and_replace"
+                            })
+                    
+                    # Construct structured data
+                    structured_data = {
+                        "title": message.get('title', ''),
+                        "summary": message.get('summary', ''),
+                        "source": message.get('source', 'Telegram'),
+                        "from_url": message.get('from_url', ''),
+                        "content": message.get('content', ''),
+                        "content_type": "text/html",
+                        "datetime_released": message.get('datetime_released', datetime.now().isoformat()),
+                        "quotation": message.get('quotation', None),
+                        "attachments": attachments,
+                        "tags": [],
+                        "metadata": message.get('metadata', {})
+                    }
+
                     try:
-                        tags = module.mark_message_tag(message['content'])
-                        message['tags'] = tags
+                        tags = module.mark_message_tag(structured_data['content'])
+                        structured_data['tags'] = tags
                     except Exception as e:
                         Log.w(TAG, f"Tagging failed: {e}")
-                    module.save_structured_results(message, fingerprint=message['from_url'])
+                    
+                    module.save_structured_results(structured_data, fingerprint=fingerprint)
             except Exception as e:
                 Log.e(TAG, e)
                 return False
