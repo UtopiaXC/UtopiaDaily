@@ -1,0 +1,10 @@
+{
+  "module.bilibili_ranking_and_update.name": "Bilibili Ranking & Updates",
+  "module.bilibili_ranking_and_update.description": "Fetch Bilibili hot ranking and uploader updates.",
+  "module.bilibili_ranking_and_update.config.uploader_id.desc": "Uploader UIDs",
+  "module.bilibili_ranking_and_update.config.uploader_id.hint": "List of Bilibili Uploader UIDs (e.g. 123456)",
+  "module.bilibili_ranking_and_update.task.fetch_ranking.name": "Fetch Ranking",
+  "module.bilibili_ranking_and_update.task.fetch_ranking.desc": "Fetch Bilibili Hot Ranking",
+  "module.bilibili_ranking_and_update.task.fetch_update.name": "Fetch Updates",
+  "module.bilibili_ranking_and_update.task.fetch_update.desc": "Fetch Uploader Updates"
+}

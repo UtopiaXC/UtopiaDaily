@@ -1,0 +1,10 @@
+{
+  "module.bilibili_ranking_and_update.name": "Bilibili热榜与UP主更新",
+  "module.bilibili_ranking_and_update.description": "本模组可以通过获取B站实时热榜和UP更新。",
+  "module.bilibili_ranking_and_update.config.uploader_id.desc": "UP主 UID 列表",
+  "module.bilibili_ranking_and_update.config.uploader_id.hint": "请输入 Bilibili UP 主的 UID（数字 ID），每行一个。",
+  "module.bilibili_ranking_and_update.task.fetch_ranking.name": "抓取热榜",
+  "module.bilibili_ranking_and_update.task.fetch_ranking.desc": "抓取 Bilibili 全站热门视频排行榜",
+  "module.bilibili_ranking_and_update.task.fetch_update.name": "抓取更新",
+  "module.bilibili_ranking_and_update.task.fetch_update.desc": "抓取配置中 UP 主的最新视频"
+}

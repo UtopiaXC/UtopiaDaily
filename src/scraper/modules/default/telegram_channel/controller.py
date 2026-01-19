@@ -5,7 +5,7 @@ from src.scraper.modules.base_module import BaseModule
 from datetime import datetime
 from typing import Tuple, Dict, Any
 
-TAG = "TELEGRAM_CHANNEL_MODULE_API"
+TAG = "TELEGRAM_CHANNEL_MODULE_CONTROLLER"
 
 MODULE_META = {
     "id": "telegram_channel_scraper",

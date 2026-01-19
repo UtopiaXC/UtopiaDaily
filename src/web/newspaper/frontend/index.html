@@ -82,29 +82,39 @@
             <h1 class="channel-title">来源: {{ source }}</h1>
 
             <div v-for="item in group" :key="item.id">
-                <h3 class="news-title">{{ item.title }}</h3>
 
-                <!-- Tags -->
-                <div v-if="item.tags && item.tags.length > 0" class="tags-container">
-                    <span v-for="(tag, index) in item.tags" :key="index" class="tag">
-                        #{{ tag.tag }}
-                    </span>
+                <!-- HTML Mode: Module controls everything -->
+                <div v-if="item.render_type === 'html'">
+                    <div v-html="item.content"></div>
+                    <hr />
                 </div>
 
-                <p style="font-style: italic; color: #7f8c8d; font-size: 0.9em;">
-                    {{ formatDate(item.datetime_released) }}
-                </p>
+                <!-- Raw Mode: Frontend renders standard card -->
+                <div v-else>
+                    <h3 class="news-title">{{ item.title }}</h3>
 
-                <!-- Quotation -->
-                <blockquote v-if="item.quotation && item.quotation.content">
-                    <p><strong>引用 {{ item.quotation.from || 'Unknown' }}</strong>：{{ item.quotation.content }}</p>
-                </blockquote>
+                    <!-- Tags -->
+                    <div v-if="item.tags && item.tags.length > 0" class="tags-container">
+                        <span v-for="(tag, index) in item.tags" :key="index" class="tag">
+                            #{{ tag.tag }}
+                        </span>
+                    </div>
 
-                <!-- Content -->
-                <div v-html="renderMarkdown(item.content)"></div>
+                    <p style="font-style: italic; color: #7f8c8d; font-size: 0.9em;">
+                        {{ formatDate(item.datetime_released) }}
+                    </p>
 
-                <p><a :href="item.from_url" target="_blank">🔗 原文</a></p>
-                <hr />
+                    <!-- Quotation -->
+                    <blockquote v-if="item.quotation && item.quotation.content">
+                        <p><strong>引用 {{ item.quotation.from || 'Unknown' }}</strong>：{{ item.quotation.content }}</p>
+                    </blockquote>
+
+                    <!-- Content -->
+                    <div v-html="renderMarkdown(item.content)"></div>
+
+                    <p><a :href="item.from_url" target="_blank">🔗 原文</a></p>
+                    <hr />
+                </div>
             </div>
         </div>
     </div>

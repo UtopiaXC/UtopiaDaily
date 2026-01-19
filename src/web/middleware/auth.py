@@ -25,17 +25,14 @@ class AuthMiddleware(BaseHTTPMiddleware):
             
             if payload:
                 user_id = payload.get("sub")
-                
-                # 使用原生异步会话
+
                 async with system_db_manager.get_async_session() as session:
                     try:
-                        # 使用 selectinload 预加载 role 关系，避免 N+1 问题和异步 lazy load 错误
                         stmt = select(User).options(selectinload(User.role)).where(User.id == user_id, User.is_active == True)
                         result = await session.execute(stmt)
                         user = result.scalars().first()
                         
                         if user:
-                            # 此时 user.role 已经加载，可以直接访问
                             raw_perms = user.role.permissions
                             if isinstance(raw_perms, dict):
                                 permissions = [k for k, v in raw_perms.items() if v]
