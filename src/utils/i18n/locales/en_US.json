@@ -7,10 +7,15 @@
     "config.default_locale.hint": "Default display language for the system interface",
     "config.server_name.desc": "Server Name",
     "config.server_name.hint": "Server name displayed in page title and sidebar",
+    "config.event.max_count.desc": "Max Event Count",
+    "config.event.max_count.hint": "Maximum number of system events to keep. Older events will be deleted when this limit is reached.",
+    "config.event.max_days.desc": "Max Event Retention (Days)",
+    "config.event.max_days.hint": "Maximum number of days to keep system events. Events older than this will be deleted.",
 
     "config.tab.system": "System Settings",
     "config.tab.ai_config": "AI Classification Settings",
     "config.group.basic": "Basic Settings",
+    "config.group.event": "Event Settings",
     "config.group.basic_ai": "Basic AI Settings",
     "config.group.tag_config": "Tag Settings",
 

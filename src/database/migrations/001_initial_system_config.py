@@ -62,6 +62,32 @@ DEFAULT_CONFIGS = [
         "is_editable": True,
         "order": 3
     },
+    {
+        "key": "event_max_count",
+        "value": "100000",
+        "default": "100000",
+        "description": "config.event.max_count.desc",
+        "hint": "config.event.max_count.hint",
+        "type": "int",
+        "tab": "system",
+        "group": "event",
+        "options": None,
+        "is_editable": True,
+        "order": 5
+    },
+    {
+        "key": "event_max_days",
+        "value": "30",
+        "default": "30",
+        "description": "config.event.max_days.desc",
+        "hint": "config.event.max_days.hint",
+        "type": "int",
+        "tab": "system",
+        "group": "event",
+        "options": None,
+        "is_editable": True,
+        "order": 6
+    },
     # AI Configs
     {
         "key": "ai_model",
