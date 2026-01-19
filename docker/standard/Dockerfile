@@ -18,10 +18,9 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
 RUN apt-get update && apt-get install -y \
-    gcc \
-    libpq-dev \
     libjpeg-dev \
     zlib1g-dev \
+    binutils \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
@@ -32,7 +31,8 @@ RUN find /install -name '*.pyc' -delete && \
     find /install -name '__pycache__' -delete && \
     find /install -name '*.exe' -delete && \
     find /install -type d -name "tests" -exec rm -rf {} + && \
-    find /install -type d -name "test" -exec rm -rf {} +
+    find /install -type d -name "test" -exec rm -rf {} + && \
+    find /install -name "*.so" -exec strip --strip-unneeded {} +
 
 FROM python:3.9-slim
 
@@ -44,7 +44,6 @@ ENV PYTHONPATH=/app
 ENV PATH=/usr/local/bin:$PATH
 
 RUN apt-get update && apt-get install -y \
-    libpq5 \
     libjpeg62-turbo \
     zlib1g \
     tzdata \
