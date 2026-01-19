@@ -80,10 +80,8 @@ export default {
         isDarkMode(newVal) {
             if (newVal) {
                 document.documentElement.classList.add('dark');
-                localStorage.setItem('theme', 'dark');
             } else {
                 document.documentElement.classList.remove('dark');
-                localStorage.setItem('theme', 'light');
             }
         }
     },
@@ -95,15 +93,31 @@ export default {
                 this.updatePageTitle();
             });
 
-            // Theme initialization with system listener
             this.systemMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
             this.systemMediaQuery.addEventListener('change', this.onSystemThemeChange);
 
+            const systemIsDark = this.systemMediaQuery.matches;
+            const systemThemeStr = systemIsDark ? 'dark' : 'light';
+
             const storedTheme = localStorage.getItem('theme');
+            const storedSnapshot = localStorage.getItem('theme_snapshot');
+
             if (storedTheme) {
-                this.isDarkMode = storedTheme === 'dark';
+                if (storedSnapshot && storedSnapshot !== systemThemeStr) {
+                    this.isDarkMode = systemIsDark;
+                    localStorage.removeItem('theme');
+                    localStorage.removeItem('theme_snapshot');
+                } else {
+                    this.isDarkMode = storedTheme === 'dark';
+                }
             } else {
-                this.isDarkMode = this.systemMediaQuery.matches;
+                this.isDarkMode = systemIsDark;
+            }
+
+            if (this.isDarkMode) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
             }
 
             await this.fetchSystemInfo();
@@ -134,7 +148,6 @@ export default {
                     await this.fetchCurrentUser();
                     await this.fetchMenu();
                 } catch (e) {
-                    // Token invalid or expired
                     this.logout();
                 }
             }
@@ -154,6 +167,8 @@ export default {
     methods: {
         onSystemThemeChange(e) {
             this.isDarkMode = e.matches;
+            localStorage.removeItem('theme');
+            localStorage.removeItem('theme_snapshot');
         },
         t(key, defaultVal) {
             return this.messages[key] || defaultVal || key;
@@ -163,6 +178,11 @@ export default {
         },
         toggleDarkMode() {
             this.isDarkMode = !this.isDarkMode;
+
+            localStorage.setItem('theme', this.isDarkMode ? 'dark' : 'light');
+            if (this.systemMediaQuery) {
+                localStorage.setItem('theme_snapshot', this.systemMediaQuery.matches ? 'dark' : 'light');
+            }
         },
         detectBrowserLocale() {
             const lang = navigator.language;
