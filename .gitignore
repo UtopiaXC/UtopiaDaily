@@ -1,7 +1,11 @@
-#Project
-test/
+# Project
+/test/
 /database/
-logs/
+/models/
+/logs/
+/cache/
+/config/.env
+/assets/
 
 # Frontend Build Artifacts & Dependencies
 src/web/dashboard/frontend/dist/
@@ -243,6 +247,3 @@ com_crashlytics_export_strings.xml
 crashlytics.properties
 crashlytics-build.properties
 fabric.properties
-
-cache
-models

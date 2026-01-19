@@ -81,7 +81,8 @@ DATA_ASYNC_DB_URL = get_db_url("data", is_async=True)
 Log.w(TAG, f"Sync URL: {SYSTEM_DB_URL}")
 Log.w(TAG, f"Async URL: {SYSTEM_ASYNC_DB_URL}")
 
-Base = declarative_base()
+SystemBase = declarative_base()
+DataModelBase = declarative_base()
 
 class DatabaseManager:
     def __init__(self, db_url, async_db_url, tag_suffix):
@@ -107,7 +108,6 @@ class DatabaseManager:
 
         self._ensure_directory()
 
-        # Sync Engine Initialization
         connect_args = {}
         if "sqlite" in self.db_url:
             connect_args = {"check_same_thread": False}
@@ -119,7 +119,6 @@ class DatabaseManager:
             echo=False
         )
 
-        # Enable WAL mode for SQLite (Sync)
         if "sqlite" in self.db_url:
             @event.listens_for(self._engine, "connect")
             def set_sqlite_pragma(dbapi_connection, connection_record):
@@ -166,7 +165,7 @@ class DatabaseManager:
 
         Log.i(self.tag, f"Database initialized at {self.db_url} (Async: {self.async_db_url})")
 
-    def create_tables(self, base=Base):
+    def create_tables(self, base):
         if not self._engine:
             self.init_db()
         base.metadata.create_all(bind=self._engine)
@@ -222,6 +221,19 @@ async def system_async_session_scope():
         await session.commit()
     except Exception as e:
         Log.e("DB_ASYNC_SESSION_SYSTEM", "Async session rollback due to exception", error=e)
+        await session.rollback()
+        raise
+    finally:
+        await session.close()
+
+@asynccontextmanager
+async def data_async_session_scope():
+    session = data_db_manager.get_async_session()
+    try:
+        yield session
+        await session.commit()
+    except Exception as e:
+        Log.e("DB_ASYNC_SESSION_DATA", "Async session rollback due to exception", error=e)
         await session.rollback()
         raise
     finally:

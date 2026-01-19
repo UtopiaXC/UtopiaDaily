@@ -86,8 +86,7 @@ class BaseModule(ABC):
         """
         Check if the fingerprint is already stored in the database.
         """
-        # TODO: Implement database check
-        return False
+        return self._context.is_fingerprint_stored(fingerprint)
 
     # ==========================================
     # Listener Interface (To be implemented)

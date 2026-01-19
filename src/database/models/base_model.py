@@ -1,12 +1,12 @@
 from sqlalchemy import Column, String, Boolean, BigInteger
-from src.database.connection import Base
+from src.database.connection import SystemBase
 import uuid
 import time
 
 def get_utc_timestamp_ms():
     return int(time.time() * 1000)
 
-class BaseModel(Base):
+class BaseModel(SystemBase):
     __abstract__ = True
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))

@@ -8,5 +8,12 @@
       <jdbc-url>jdbc:sqlite:C:\Users\UtopiaXC\PycharmProjects\Utopia-Daily\database\system\system.db</jdbc-url>
       <working-dir>$ProjectFileDir$</working-dir>
     </data-source>
+    <data-source source="LOCAL" name="data.db" uuid="6adb2bc5-4cd6-480d-9574-42d4051b257c">
+      <driver-ref>sqlite.xerial</driver-ref>
+      <synchronize>true</synchronize>
+      <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
+      <jdbc-url>jdbc:sqlite:C:\Users\UtopiaXC\PycharmProjects\Utopia-Daily\database\data\data.db</jdbc-url>
+      <working-dir>$ProjectFileDir$</working-dir>
+    </data-source>
   </component>
 </project>

@@ -105,9 +105,6 @@ def test_configuration(module, config):
         if not success:
             failed_channels.append(channel)
 
-    # TODO : DELETE
-    execute_schedule_task(module,"fetch_news")
-
     if failed_channels:
         return False, f"Failed to connect to: {', '.join(failed_channels)}"
     
@@ -143,17 +140,14 @@ def execute_schedule_task(module, task_key: str):
                                              )
             try:
                 for message in messages:
-                    # Generate fingerprint
                     fingerprint = message.get('from_url')
                     if not fingerprint:
                         fingerprint = module.generate_fingerprint(message.get('content', ''))
-                    
-                    # Check duplication
+
                     if module.is_fingerprint_stored(fingerprint):
                         Log.d(TAG, f"Skipping duplicate content: {fingerprint}")
                         continue
 
-                    # Process attachments
                     attachments = []
                     if 'images' in message and message['images']:
                         for img_url in message['images']:
@@ -163,8 +157,7 @@ def execute_schedule_task(module, task_key: str):
                                 "type": "image",
                                 "store_policy": "store_and_replace"
                             })
-                    
-                    # Construct structured data
+
                     structured_data = {
                         "title": message.get('title', ''),
                         "summary": message.get('summary', ''),

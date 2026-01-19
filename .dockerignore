@@ -1,3 +1,11 @@
+# Project
+/database/
+/models/
+/logs/
+/cache/
+/config/.env
+/assets/
+
 __pycache__
 *.pyc
 *.pyo
@@ -20,13 +28,6 @@ coverage.xml
 .gitignore
 .idea
 .DS_Store
-# docker
-/config/.env
-cache
-models
-assets
-logs
-
 
 # Frontend
 src/web/dashboard/frontend/node_modules

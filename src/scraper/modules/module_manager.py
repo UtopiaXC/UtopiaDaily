@@ -7,13 +7,17 @@ from typing import Dict, Any, Tuple
 
 from src.utils.logger.logger import Log
 from src.utils.i18n import i18n
-from src.database.connection import system_session_scope
-from src.database.models import ScraperModule, ScraperModuleConfig, ScraperModuleTask, SystemConfig
+from src.database.connection import system_session_scope, data_session_scope, DataModelBase
+from src.database.models import ScraperModule, ScraperModuleConfig, ScraperModuleTask, SystemConfig, BaseModel
+from src.database.models.scraper_result import ScraperResult
 from src.utils.event import EventManager
 from src.utils.cache_manage import cache_manager
 from src.utils.classification.classification import classify_text
 
 TAG = "MODULE_MANAGER"
+
+from src.database.connection import data_db_manager
+data_db_manager.create_tables(base=DataModelBase)
 
 
 class ModuleContext:
@@ -44,10 +48,10 @@ class ModuleContext:
         return self._manager.mark_message_tag(self.module_id, message)
 
     def save_structured_results(self, value, fingerprint=""):
-        # TODO: Save to actual database
-        Log.w(TAG, json.dumps(value, ensure_ascii=False))
-        Log.w(TAG, fingerprint)
-        return {"status": "success"}
+        return self._manager.save_structured_results(self.module_id, value, fingerprint)
+        
+    def is_fingerprint_stored(self, fingerprint: str) -> bool:
+        return self._manager.is_fingerprint_stored(self.module_id, fingerprint)
 
     def install_requirements(self, requirements_file: str):
         return self._manager.install_module_requirements(self.module_id, requirements_file)
@@ -642,3 +646,68 @@ class ModuleManager:
             except Exception as e:
                 Log.e(TAG, f"Classification failed for module {module_id}", error=e)
                 return []
+
+    def save_structured_results(self, module_id, value, fingerprint=""):
+        # TODO : Add media download logic
+        if not fingerprint:
+            import hashlib
+            content = json.dumps(value, sort_keys=True)
+            fingerprint = hashlib.blake2b(content.encode('utf-8'), digest_size=32).hexdigest()
+
+        module_uuid = None
+        with system_session_scope() as session:
+            module = session.query(ScraperModule).filter_by(module_id=module_id).first()
+            if module:
+                module_uuid = module.id
+        
+        if not module_uuid:
+            Log.e(TAG, f"[{module_id}] Module not found in DB, cannot save results.")
+            return {"status": "error", "message": "Module not found"}
+
+        try:
+            with data_session_scope() as session:
+                existing = session.query(ScraperResult).filter_by(
+                    module_id=module_uuid, 
+                    fingerprint=fingerprint
+                ).first()
+
+                if existing:
+                    existing.value = value
+                    Log.d(TAG, f"[{module_id}] Updated result for fingerprint: {fingerprint}")
+                else:
+                    new_result = ScraperResult(
+                        module_id=module_uuid,
+                        fingerprint=fingerprint,
+                        value=value
+                    )
+                    session.add(new_result)
+                    Log.d(TAG, f"[{module_id}] Saved new result for fingerprint: {fingerprint}")
+            return {"status": "success"}
+        except Exception as e:
+            Log.e(TAG, f"[{module_id}] Failed to save result", error=e)
+            return {"status": "error", "message": str(e)}
+
+    def is_fingerprint_stored(self, module_id, fingerprint):
+        if not fingerprint:
+            return False
+
+        module_uuid = None
+        with system_session_scope() as session:
+            module = session.query(ScraperModule).filter_by(module_id=module_id).first()
+            if module:
+                module_uuid = module.id
+        
+        if not module_uuid:
+            Log.w(TAG, f"[{module_id}] Module not found in DB during fingerprint check.")
+            return False
+
+        try:
+            with data_session_scope() as session:
+                exists = session.query(ScraperResult.id).filter_by(
+                    module_id=module_uuid,
+                    fingerprint=fingerprint
+                ).first()
+                return exists is not None
+        except Exception as e:
+            Log.e(TAG, f"[{module_id}] Failed to check fingerprint", error=e)
+            return False
