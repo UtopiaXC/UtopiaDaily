@@ -1,0 +1,22 @@
+{
+  "id": "hacker_news_rss",
+  "kind": "scraper",
+  "version": "1.0.0",
+  "author": "UtopiaXC",
+  "command": ["python3", "main.py"],
+  "configs": [
+    {
+      "key": "limit",
+      "type": "int",
+      "default_value": "10",
+      "sort_order": 1
+    }
+  ],
+  "tasks": [
+    {
+      "key": "fetch_top",
+      "default_cron": "0 */2 * * *",
+      "default_enabled": false
+    }
+  ]
+}

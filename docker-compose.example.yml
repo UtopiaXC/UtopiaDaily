@@ -1,0 +1,21 @@
+services:
+  utopia-daily:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: utopia-daily:latest
+    container_name: utopia-daily
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      TZ: Asia/Shanghai
+      UDAILY_SERVER_MODE: release
+      UDAILY_BASE_URL: http://localhost:8000
+      UDAILY_DB_DRIVER: sqlite
+      UDAILY_DB_DSN: data/db/utopia_daily.db
+    volumes:
+      - ./data:/app/data
+      - ./plugins:/app/plugins
+      - ./logs:/app/logs
+

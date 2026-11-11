@@ -1,0 +1,46 @@
+site:
+  name: Utopia Daily
+  description: Modular news aggregation and distribution platform
+  base_url: http://localhost:8000
+  default_locale: en_US
+
+server:
+  host: 0.0.0.0
+  port: 8000
+  mode: release
+
+database:
+  driver: sqlite
+  dsn: data/db/utopia_daily.db
+
+storage:
+  cache_dir: cache
+  plugins_dir: plugins
+
+security:
+  jwt_secret: ""
+  jwt_access_minutes: 120
+  jwt_refresh_days: 30
+  pow_difficulty: 50000
+  max_login_attempts: 5
+  lockout_minutes: 15
+  allow_registration: false
+
+smtp:
+  enabled: false
+  host: ""
+  port: 465
+  encryption: ssl
+  from: ""
+  from_name: Utopia Daily
+  user: ""
+  password: ""
+
+logging:
+  level: info
+  dir: logs
+  max_size_mb: 20
+  max_backups: 10
+  max_age_days: 30
+  compress: true
+  permanent_level: error

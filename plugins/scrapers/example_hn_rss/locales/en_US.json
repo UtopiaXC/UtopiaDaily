@@ -1,0 +1,8 @@
+{
+  "module.hacker_news_rss.name": "Hacker News RSS",
+  "module.hacker_news_rss.description": "Collects top front-page stories from Hacker News via Python stdio plugin",
+  "module.hacker_news_rss.config.limit.desc": "Max Stories",
+  "module.hacker_news_rss.config.limit.hint": "Maximum front-page items stored per run",
+  "module.hacker_news_rss.task.fetch_top.name": "Fetch Top Stories",
+  "module.hacker_news_rss.task.fetch_top.desc": "Read latest Hacker News front-page feed"
+}

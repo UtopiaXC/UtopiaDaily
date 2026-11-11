@@ -1,0 +1,8 @@
+{
+  "module.hacker_news_rss.name": "Hacker News 热门资讯",
+  "module.hacker_news_rss.description": "通过 Python Stdio 插件采集 Hacker News 首页热门条目",
+  "module.hacker_news_rss.config.limit.desc": "最大条目数",
+  "module.hacker_news_rss.config.limit.hint": "单次任务保留的头条数量上限",
+  "module.hacker_news_rss.task.fetch_top.name": "抓取首页热门",
+  "module.hacker_news_rss.task.fetch_top.desc": "拉取 Hacker News 最新 RSS 内容"
+}
