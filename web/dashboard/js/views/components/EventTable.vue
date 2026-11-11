@@ -1,179 +1,178 @@
 <template>
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 flex flex-col">
-        <div class="mb-5 flex flex-wrap justify-between items-center gap-3">
+    <div class="ui-surface flex flex-col">
+        <div class="ui-surface-header flex flex-wrap justify-between items-center gap-3">
             <div class="flex items-center gap-2">
-                <span class="material-icons text-blue-500 text-2xl">notifications</span>
-                <h3 class="text-lg font-bold text-gray-800 dark:text-white">{{ t('events.title') }}</h3>
+                <span class="material-icons text-slate-500 dark:text-slate-400 text-[20px]">notifications</span>
+                <h3 class="text-sm font-semibold text-slate-900 dark:text-white tracking-tight">{{ t('events.title') }}</h3>
             </div>
             <button
                 @click="fetchEvents(1)"
-                class="p-2 text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+                class="ui-btn-secondary"
                 :title="t('common.refresh')"
             >
-                <span class="material-icons" :class="{'animate-spin': loading}">refresh</span>
+                <span class="material-icons text-[16px]" :class="{ 'animate-spin': loading }">refresh</span>
+                <span>{{ t('common.refresh') }}</span>
             </button>
         </div>
 
-        <div class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden flex flex-col bg-white dark:bg-gray-900">
-            <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse">
-                    <thead>
-                        <tr class="bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider border-b border-gray-200 dark:border-gray-700">
-                            <th class="p-3.5 font-medium cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 select-none w-32" @click="toggleSort('level')">
-                                <div class="flex items-center gap-1">
-                                    {{ t('events.level') }}
-                                    <span class="material-icons text-xs">{{ getSortIcon('level') }}</span>
-                                </div>
-                            </th>
-                            <th class="p-3.5 font-medium cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 select-none w-32" @click="toggleSort('category')">
-                                <div class="flex items-center gap-1">
-                                    {{ t('events.category') }}
-                                    <span class="material-icons text-xs">{{ getSortIcon('category') }}</span>
-                                </div>
-                            </th>
-                            <th class="p-3.5 font-medium min-w-[260px]">{{ t('events.message') }}</th>
-                            <th class="p-3.5 font-medium cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 select-none w-48" @click="toggleSort('created_at')">
-                                <div class="flex items-center gap-1">
-                                    {{ t('events.time') }}
-                                    <span class="material-icons text-xs">{{ getSortIcon('created_at') }}</span>
-                                </div>
-                            </th>
-                            <th class="p-3.5 font-medium text-right w-24">{{ t('common.actions') }}</th>
-                        </tr>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-slate-50 dark:bg-slate-900/80 text-slate-500 dark:text-slate-400 text-[11px] uppercase tracking-wider border-b border-slate-200 dark:border-slate-800">
+                        <th class="p-3 font-semibold cursor-pointer hover:text-slate-800 dark:hover:text-slate-200 select-none w-32" @click="toggleSort('level')">
+                            <div class="flex items-center gap-1">
+                                <span>{{ t('events.level') }}</span>
+                                <span class="material-icons text-[14px]">{{ getSortIcon('level') }}</span>
+                            </div>
+                        </th>
+                        <th class="p-3 font-semibold cursor-pointer hover:text-slate-800 dark:hover:text-slate-200 select-none w-32" @click="toggleSort('category')">
+                            <div class="flex items-center gap-1">
+                                <span>{{ t('events.category') }}</span>
+                                <span class="material-icons text-[14px]">{{ getSortIcon('category') }}</span>
+                            </div>
+                        </th>
+                        <th class="p-3 font-semibold min-w-[260px]">{{ t('events.message') }}</th>
+                        <th class="p-3 font-semibold cursor-pointer hover:text-slate-800 dark:hover:text-slate-200 select-none w-48" @click="toggleSort('created_at')">
+                            <div class="flex items-center gap-1">
+                                <span>{{ t('events.time') }}</span>
+                                <span class="material-icons text-[14px]">{{ getSortIcon('created_at') }}</span>
+                            </div>
+                        </th>
+                        <th class="p-3 font-semibold text-right w-24">{{ t('common.actions') }}</th>
+                    </tr>
 
-                        <tr class="bg-gray-50/60 dark:bg-gray-800/60 border-b border-gray-200 dark:border-gray-700">
-                            <th class="p-2">
-                                <select
-                                    v-model="filters.level"
-                                    @change="fetchEvents(1)"
-                                    class="w-full px-2 py-1.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-xs focus:ring-1 focus:ring-blue-500 dark:text-white"
-                                >
-                                    <option value="">{{ t('events.all_levels') }}</option>
-                                    <option value="NORMAL">{{ t('event.level.NORMAL') }}</option>
-                                    <option value="WARNING">{{ t('event.level.WARNING') }}</option>
-                                    <option value="CRITICAL">{{ t('event.level.CRITICAL') }}</option>
-                                    <option value="FATAL">{{ t('event.level.FATAL') }}</option>
-                                </select>
-                            </th>
-                            <th class="p-2">
-                                <select
-                                    v-model="filters.category"
-                                    @change="fetchEvents(1)"
-                                    class="w-full px-2 py-1.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-xs focus:ring-1 focus:ring-blue-500 dark:text-white"
-                                >
-                                    <option value="">{{ t('events.all_categories') }}</option>
-                                    <option v-for="cat in categories" :key="cat" :value="cat">
-                                        {{ t('event.category.' + cat, cat) }}
-                                    </option>
-                                </select>
-                            </th>
-                            <th class="p-2">
-                                <div class="relative">
-                                    <span class="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
-                                        <span class="material-icons text-gray-400 text-[14px]">search</span>
-                                    </span>
-                                    <input
-                                        v-model="filters.search"
-                                        @keyup.enter="fetchEvents(1)"
-                                        type="text"
-                                        class="w-full pl-7 pr-2 py-1.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-xs focus:ring-1 focus:ring-blue-500 dark:text-white"
-                                        :placeholder="t('events.search_placeholder')"
-                                    >
-                                </div>
-                            </th>
-                            <th class="p-2">
+                    <tr class="bg-slate-50/50 dark:bg-slate-950/40 border-b border-slate-200 dark:border-slate-800">
+                        <th class="p-2">
+                            <select
+                                v-model="filters.level"
+                                @change="fetchEvents(1)"
+                                class="ui-input py-1.5 px-2 text-xs font-normal"
+                            >
+                                <option value="">{{ t('events.all_levels') }}</option>
+                                <option value="NORMAL">{{ t('event.level.NORMAL') }}</option>
+                                <option value="WARNING">{{ t('event.level.WARNING') }}</option>
+                                <option value="CRITICAL">{{ t('event.level.CRITICAL') }}</option>
+                                <option value="FATAL">{{ t('event.level.FATAL') }}</option>
+                            </select>
+                        </th>
+                        <th class="p-2">
+                            <select
+                                v-model="filters.category"
+                                @change="fetchEvents(1)"
+                                class="ui-input py-1.5 px-2 text-xs font-normal"
+                            >
+                                <option value="">{{ t('events.all_categories') }}</option>
+                                <option v-for="cat in categories" :key="cat" :value="cat">
+                                    {{ t('event.category.' + cat, cat) }}
+                                </option>
+                            </select>
+                        </th>
+                        <th class="p-2">
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
+                                    <span class="material-icons text-slate-400 text-[15px]">search</span>
+                                </span>
                                 <input
-                                    type="date"
-                                    v-model="filters.date"
-                                    @change="fetchEvents(1)"
-                                    class="w-full px-2 py-1.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-xs focus:ring-1 focus:ring-blue-500 dark:text-white"
+                                    v-model="filters.search"
+                                    @keyup.enter="fetchEvents(1)"
+                                    type="text"
+                                    class="ui-input py-1.5 pl-8 pr-2 text-xs font-normal"
+                                    :placeholder="t('events.search_placeholder')"
                                 >
-                            </th>
-                            <th class="p-2 text-right">
-                                <button
-                                    @click="resetFilters"
-                                    class="px-2 py-1 text-xs text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 rounded hover:bg-gray-200/60 dark:hover:bg-gray-700"
-                                >
-                                    {{ t('common.reset') }}
-                                </button>
-                            </th>
-                        </tr>
-                    </thead>
+                            </div>
+                        </th>
+                        <th class="p-2">
+                            <input
+                                type="date"
+                                v-model="filters.date"
+                                @change="fetchEvents(1)"
+                                class="ui-input py-1.5 px-2 text-xs font-normal"
+                            >
+                        </th>
+                        <th class="p-2 text-right">
+                            <button
+                                @click="resetFilters"
+                                class="ui-btn-secondary py-1 px-2.5 text-xs font-normal"
+                            >
+                                {{ t('common.reset') }}
+                            </button>
+                        </th>
+                    </tr>
+                </thead>
 
-                    <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
-                        <tr v-if="loading">
-                            <td colspan="5" class="p-8 text-center">
-                                <div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
-                                <p class="mt-2 text-gray-400 text-xs">{{ t('common.loading') }}</p>
-                            </td>
-                        </tr>
-                        <tr v-else-if="events.length === 0">
-                            <td colspan="5" class="p-12 text-center text-gray-400">
-                                <span class="material-icons text-4xl mb-2 opacity-30">inbox</span>
-                                <p class="text-sm">{{ t('events.no_events') }}</p>
-                            </td>
-                        </tr>
-                        <tr v-for="ev in events" :key="ev.id" class="hover:bg-blue-50/30 dark:hover:bg-blue-900/10 transition-colors text-sm">
-                            <td class="p-3.5 whitespace-nowrap align-top">
-                                <span :class="getLevelClass(ev.level)" class="px-2 py-0.5 rounded text-[11px] font-semibold border tracking-wide">
-                                    {{ t('event.level.' + ev.level, ev.level) }}
+                <tbody class="divide-y divide-slate-200 dark:divide-slate-800 bg-white dark:bg-slate-900">
+                    <tr v-if="loading">
+                        <td colspan="5" class="p-8 text-center">
+                            <div class="inline-block animate-spin rounded-full h-5 w-5 border-2 border-slate-200 dark:border-slate-700 border-t-slate-900 dark:border-t-blue-500"></div>
+                            <p class="mt-2 text-slate-400 text-xs">{{ t('common.loading') }}</p>
+                        </td>
+                    </tr>
+                    <tr v-else-if="events.length === 0">
+                        <td colspan="5" class="p-10 text-center text-slate-400">
+                            <span class="material-icons text-3xl mb-1 opacity-40 block">inbox</span>
+                            <p class="text-xs">{{ t('events.no_events') }}</p>
+                        </td>
+                    </tr>
+                    <tr v-for="ev in events" :key="ev.id" class="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors text-sm">
+                        <td class="p-3 whitespace-nowrap align-top">
+                            <span :class="getLevelClass(ev.level)" class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium border">
+                                {{ t('event.level.' + ev.level, ev.level) }}
+                            </span>
+                        </td>
+                        <td class="p-3 whitespace-nowrap align-top">
+                            <span class="text-slate-600 dark:text-slate-300 text-xs font-medium">
+                                {{ t('event.category.' + ev.category, ev.category) }}
+                            </span>
+                        </td>
+                        <td class="p-3 align-top">
+                            <div class="font-medium text-slate-900 dark:text-slate-100 leading-snug text-[13px]">
+                                {{ formatEventMessage(ev) }}
+                            </div>
+                            <div class="text-[11px] text-slate-400 mt-1 font-mono flex items-center gap-2">
+                                <span>{{ ev.event_key }}</span>
+                                <span v-if="ev.source_type || ev.source_id">
+                                    {{ [ev.source_type, ev.source_id].filter(Boolean).join(':') }}
                                 </span>
-                            </td>
-                            <td class="p-3.5 whitespace-nowrap align-top">
-                                <span class="text-gray-600 dark:text-gray-300 text-xs font-medium">
-                                    {{ t('event.category.' + ev.category, ev.category) }}
-                                </span>
-                            </td>
-                            <td class="p-3.5 align-top">
-                                <div class="font-medium text-gray-800 dark:text-white leading-snug">
-                                    {{ formatEventMessage(ev) }}
-                                </div>
-                                <div class="text-[11px] text-gray-400 mt-1 font-mono flex items-center gap-2">
-                                    <span>{{ ev.event_key }}</span>
-                                    <span v-if="ev.source_type || ev.source_id">
-                                        {{ [ev.source_type, ev.source_id].filter(Boolean).join(':') }}
-                                    </span>
-                                </div>
-                            </td>
-                            <td class="p-3.5 text-gray-500 dark:text-gray-400 whitespace-nowrap font-mono text-xs align-top">
-                                {{ formatDate(ev.created_at) }}
-                            </td>
-                            <td class="p-3.5 text-right align-top">
-                                <button
-                                    @click="openDetails(ev)"
-                                    class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 text-xs font-medium hover:underline"
-                                >
-                                    {{ t('events.details') }}
-                                </button>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
+                            </div>
+                        </td>
+                        <td class="p-3 text-slate-500 dark:text-slate-400 whitespace-nowrap font-mono text-xs align-top">
+                            {{ formatDate(ev.created_at) }}
+                        </td>
+                        <td class="p-3 text-right align-top">
+                            <button
+                                @click="openDetails(ev)"
+                                class="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 text-xs font-medium hover:underline"
+                            >
+                                {{ t('events.details') }}
+                            </button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
 
-            <div class="p-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
-                <span class="text-gray-500 dark:text-gray-400">
-                    {{ pageInfoText }}
-                </span>
+        <div class="px-4 py-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs rounded-b-lg">
+            <span class="text-slate-500 dark:text-slate-400">
+                {{ pageInfoText }}
+            </span>
 
-                <div class="flex items-center gap-2">
-                    <button
-                        @click="fetchEvents(page - 1)"
-                        :disabled="page <= 1"
-                        class="px-2.5 py-1 border border-gray-300 dark:border-gray-600 rounded hover:bg-white dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed text-gray-600 dark:text-gray-300 transition-colors flex items-center gap-1"
-                    >
-                        <span class="material-icons text-sm">chevron_left</span>
-                        {{ t('common.prev') }}
-                    </button>
-                    <button
-                        @click="fetchEvents(page + 1)"
-                        :disabled="page >= totalPages"
-                        class="px-2.5 py-1 border border-gray-300 dark:border-gray-600 rounded hover:bg-white dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed text-gray-600 dark:text-gray-300 transition-colors flex items-center gap-1"
-                    >
-                        {{ t('common.next') }}
-                        <span class="material-icons text-sm">chevron_right</span>
-                    </button>
-                </div>
+            <div class="flex items-center gap-2">
+                <button
+                    @click="fetchEvents(page - 1)"
+                    :disabled="page <= 1"
+                    class="ui-btn-secondary py-1 px-2.5 text-xs"
+                >
+                    <span class="material-icons text-[15px]">chevron_left</span>
+                    <span>{{ t('common.prev') }}</span>
+                </button>
+                <button
+                    @click="fetchEvents(page + 1)"
+                    :disabled="page >= totalPages"
+                    class="ui-btn-secondary py-1 px-2.5 text-xs"
+                >
+                    <span>{{ t('common.next') }}</span>
+                    <span class="material-icons text-[15px]">chevron_right</span>
+                </button>
             </div>
         </div>
 
@@ -320,12 +319,12 @@ export default {
         getLevelClass(level) {
             switch (level) {
                 case 'WARNING':
-                    return 'bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-300 dark:border-yellow-800';
+                    return 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900';
                 case 'CRITICAL':
                 case 'FATAL':
-                    return 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800';
+                    return 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-900';
                 default:
-                    return 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800';
+                    return 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-900';
             }
         },
         formatDate(iso) {

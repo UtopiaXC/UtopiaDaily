@@ -9,6 +9,7 @@ import (
 	"github.com/UtopiaXC/UtopiaDaily/internal/model"
 	"github.com/UtopiaXC/UtopiaDaily/internal/module"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type ModuleRepository struct {
@@ -38,20 +39,19 @@ func (r *ModuleRepository) SyncModule(mod module.Module, envReady bool, customNa
 		var existing model.Module
 		err := tx.Where("id = ?", meta.ID).First(&existing).Error
 		if err != nil {
-			rec := model.Module{
-				ID:             meta.ID,
-				Kind:           meta.Kind,
-				Source:         meta.Source,
-				NameKey:        nameKey,
-				DescriptionKey: descKey,
-				Version:        meta.Version,
-				Author:         meta.Author,
-				Enabled:        false,
-				EnvReady:       envReady,
-				CreatedAt:      now,
-				UpdatedAt:      now,
-			}
-			if err := tx.Create(&rec).Error; err != nil {
+			if err := tx.Model(&model.Module{}).Create(map[string]any{
+				"id":              meta.ID,
+				"kind":            meta.Kind,
+				"source":          meta.Source,
+				"name_key":        nameKey,
+				"description_key": descKey,
+				"version":         meta.Version,
+				"author":          meta.Author,
+				"enabled":         false,
+				"env_ready":       envReady,
+				"created_at":      now,
+				"updated_at":      now,
+			}).Error; err != nil {
 				return err
 			}
 		} else {
@@ -67,6 +67,17 @@ func (r *ModuleRepository) SyncModule(mod module.Module, envReady bool, customNa
 			}).Error; err != nil {
 				return err
 			}
+		}
+
+		if meta.Kind == module.KindScraper {
+			_ = tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&model.NewspaperModuleConfig{
+				ModuleID:             meta.ID,
+				Visible:              true,
+				LookbackDaysOverride: 0,
+				MaxItemsOverride:     0,
+				SortOrder:            0,
+				UpdatedAt:            now,
+			}).Error
 		}
 
 		for _, field := range schema {

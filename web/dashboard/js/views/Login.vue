@@ -1,12 +1,12 @@
 <template>
-    <div class="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 transition-colors duration-200 p-4">
+    <div class="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 transition-colors duration-150 p-4">
         <div
-            class="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-xl w-full relative border border-gray-100 dark:border-gray-700 transition-colors duration-200"
+            class="bg-white dark:bg-slate-900 p-7 rounded-lg w-full relative border border-slate-200 dark:border-slate-800 transition-colors duration-150"
             :class="mode === 'setup' ? 'max-w-lg' : 'max-w-md'"
         >
-            <div class="absolute top-4 right-4 flex items-center space-x-1">
-                <button @click="$emit('toggle-dark-mode')" type="button" class="p-2 rounded-full text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition focus:outline-none">
-                    <span class="material-icons text-xl">{{ isDarkMode ? 'light_mode' : 'dark_mode' }}</span>
+            <div class="absolute top-4 right-4 flex items-center gap-1.5">
+                <button @click="$emit('toggle-dark-mode')" type="button" class="p-1.5 rounded-md border border-slate-200 dark:border-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition focus:outline-none">
+                    <span class="material-icons text-[18px] leading-none block">{{ isDarkMode ? 'light_mode' : 'dark_mode' }}</span>
                 </button>
                 <CustomSelect
                     :model-value="currentLocale"
@@ -16,18 +16,19 @@
                 />
             </div>
 
-            <div class="text-center mb-7 mt-4">
-                <h2 class="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">{{ mode === 'setup' ? t('setup.title') : serverName }}</h2>
-                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1.5">{{ modeSubtitle }}</p>
+            <div class="mb-6 mt-1">
+                <div class="inline-flex items-center justify-center w-9 h-9 rounded-md bg-slate-900 dark:bg-blue-600 text-white text-xs font-bold mb-3">UD</div>
+                <h2 class="text-xl font-bold text-slate-900 dark:text-white tracking-tight">{{ mode === 'setup' ? t('setup.title') : serverName }}</h2>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">{{ modeSubtitle }}</p>
             </div>
 
-            <div v-if="error" class="bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 text-red-700 dark:text-red-400 p-3.5 rounded mb-5 text-sm flex items-start">
-                <span class="material-icons text-sm mr-2 mt-0.5">error</span>
+            <div v-if="error" class="bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-400 px-3 py-2.5 rounded-md mb-4 text-xs flex items-start">
+                <span class="material-icons text-[16px] mr-2 mt-0.5">error_outline</span>
                 <span>{{ error }}</span>
             </div>
 
-            <div v-if="notice" class="bg-green-50 dark:bg-green-900/20 border-l-4 border-green-500 text-green-700 dark:text-green-400 p-3.5 rounded mb-5 text-sm flex items-start">
-                <span class="material-icons text-sm mr-2 mt-0.5">check_circle</span>
+            <div v-if="notice" class="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900 text-emerald-700 dark:text-emerald-400 px-3 py-2.5 rounded-md mb-4 text-xs flex items-start">
+                <span class="material-icons text-[16px] mr-2 mt-0.5">check_circle</span>
                 <span>{{ notice }}</span>
             </div>
 
@@ -64,11 +65,11 @@
                 <div v-if="setupStep === 1" class="space-y-4">
                     <div>
                         <label class="block text-gray-700 dark:text-gray-300 text-sm font-medium mb-1.5">{{ t('setup.site_name') }}</label>
-                        <input v-model="setupForm.site_name" type="text" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 dark:text-white focus:ring-blue-500 focus:border-blue-500">
+                        <input v-model="setupForm.site_name" type="text" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:ring-blue-500/20 focus:border-blue-500">
                     </div>
                     <div>
                         <label class="block text-gray-700 dark:text-gray-300 text-sm font-medium mb-1.5">{{ t('setup.site_desc') }}</label>
-                        <input v-model="setupForm.site_description" type="text" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 dark:text-white focus:ring-blue-500 focus:border-blue-500">
+                        <input v-model="setupForm.site_description" type="text" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:ring-blue-500/20 focus:border-blue-500">
                     </div>
                     <div>
                         <div class="flex items-center gap-1.5 mb-1.5">
@@ -80,7 +81,7 @@
                                 </div>
                             </div>
                         </div>
-                        <input v-model="setupForm.base_url" type="url" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 dark:text-white focus:ring-blue-500 focus:border-blue-500">
+                        <input v-model="setupForm.base_url" type="url" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:ring-blue-500/20 focus:border-blue-500">
                     </div>
                     <div>
                         <label class="block text-gray-700 dark:text-gray-300 text-sm font-medium mb-1.5">{{ t('setup.default_locale') }}</label>
@@ -101,11 +102,11 @@
                     <div v-if="setupForm.smtp_enabled" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                             <label class="block text-gray-700 dark:text-gray-300 text-xs font-medium mb-1">{{ t('config.smtp.host.desc') }}</label>
-                            <input v-model="setupForm.smtp_host" type="text" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 dark:text-white">
+                            <input v-model="setupForm.smtp_host" type="text" class="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-md text-sm bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100">
                         </div>
                         <div>
                             <label class="block text-gray-700 dark:text-gray-300 text-xs font-medium mb-1">{{ t('config.smtp.port.desc') }}</label>
-                            <input v-model.number="setupForm.smtp_port" type="number" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 dark:text-white">
+                            <input v-model.number="setupForm.smtp_port" type="number" class="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-md text-sm bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100">
                         </div>
                         <div>
                             <label class="block text-gray-700 dark:text-gray-300 text-xs font-medium mb-1">{{ t('config.smtp.encryption.desc') }}</label>
@@ -113,19 +114,19 @@
                         </div>
                         <div>
                             <label class="block text-gray-700 dark:text-gray-300 text-xs font-medium mb-1">{{ t('config.smtp.user.desc') }}</label>
-                            <input v-model="setupForm.smtp_user" type="text" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 dark:text-white">
+                            <input v-model="setupForm.smtp_user" type="text" class="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-md text-sm bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100">
                         </div>
                         <div>
                             <label class="block text-gray-700 dark:text-gray-300 text-xs font-medium mb-1">{{ t('config.smtp.password.desc') }}</label>
-                            <input v-model="setupForm.smtp_password" type="password" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 dark:text-white">
+                            <input v-model="setupForm.smtp_password" type="password" class="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-md text-sm bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100">
                         </div>
                         <div>
                             <label class="block text-gray-700 dark:text-gray-300 text-xs font-medium mb-1">{{ t('config.smtp.from.desc') }}</label>
-                            <input v-model="setupForm.smtp_from" type="email" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 dark:text-white">
+                            <input v-model="setupForm.smtp_from" type="email" class="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-md text-sm bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100">
                         </div>
                         <div class="sm:col-span-2">
                             <label class="block text-gray-700 dark:text-gray-300 text-xs font-medium mb-1">{{ t('config.smtp.from_name.desc') }}</label>
-                            <input v-model="setupForm.smtp_from_name" type="text" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 dark:text-white">
+                            <input v-model="setupForm.smtp_from_name" type="text" class="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-md text-sm bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100">
                         </div>
                     </div>
                 </div>
@@ -141,16 +142,16 @@
                                 </div>
                             </div>
                         </div>
-                        <input v-model="setupForm.username" type="text" required class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 dark:text-white focus:ring-blue-500 focus:border-blue-500">
+                        <input v-model="setupForm.username" type="text" required class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:ring-blue-500/20 focus:border-blue-500">
                     </div>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                             <label class="block text-gray-700 dark:text-gray-300 text-sm font-medium mb-1.5">{{ t('setup.admin_nickname') }}</label>
-                            <input v-model="setupForm.nickname" type="text" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 dark:text-white focus:ring-blue-500 focus:border-blue-500">
+                            <input v-model="setupForm.nickname" type="text" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:ring-blue-500/20 focus:border-blue-500">
                         </div>
                         <div>
                             <label class="block text-gray-700 dark:text-gray-300 text-sm font-medium mb-1.5">{{ t('setup.admin_email') }}</label>
-                            <input v-model="setupForm.email" type="email" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 dark:text-white focus:ring-blue-500 focus:border-blue-500">
+                            <input v-model="setupForm.email" type="email" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:ring-blue-500/20 focus:border-blue-500">
                         </div>
                     </div>
                     <div>
@@ -163,11 +164,11 @@
                                 </div>
                             </div>
                         </div>
-                        <input v-model="setupForm.password" type="password" required class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 dark:text-white focus:ring-blue-500 focus:border-blue-500">
+                        <input v-model="setupForm.password" type="password" required class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:ring-blue-500/20 focus:border-blue-500">
                     </div>
                     <div>
                         <label class="block text-gray-700 dark:text-gray-300 text-sm font-medium mb-1.5">{{ t('setup.confirm_password') }}</label>
-                        <input v-model="setupForm.confirmPassword" type="password" required class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 dark:text-white focus:ring-blue-500 focus:border-blue-500">
+                        <input v-model="setupForm.confirmPassword" type="password" required class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:ring-blue-500/20 focus:border-blue-500">
                     </div>
                 </div>
 
@@ -213,15 +214,15 @@
                             </div>
                         </div>
                     </div>
-                    <input v-model="registerForm.username" type="text" required class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 dark:text-white">
+                    <input v-model="registerForm.username" type="text" required class="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-md text-sm bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100">
                 </div>
                 <div>
                     <label class="block text-gray-700 dark:text-gray-300 text-sm font-medium mb-1.5">{{ t('auth.register.nickname') }}</label>
-                    <input v-model="registerForm.nickname" type="text" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 dark:text-white">
+                    <input v-model="registerForm.nickname" type="text" class="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-md text-sm bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100">
                 </div>
                 <div>
                     <label class="block text-gray-700 dark:text-gray-300 text-sm font-medium mb-1.5">{{ t('auth.register.email') }}</label>
-                    <input v-model="registerForm.email" type="email" required class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 dark:text-white">
+                    <input v-model="registerForm.email" type="email" required class="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-md text-sm bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100">
                 </div>
                 <div>
                     <div class="flex items-center gap-1.5 mb-1.5">
@@ -233,11 +234,11 @@
                             </div>
                         </div>
                     </div>
-                    <input v-model="registerForm.password" type="password" required class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 dark:text-white">
+                    <input v-model="registerForm.password" type="password" required class="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-md text-sm bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100">
                 </div>
                 <div>
                     <label class="block text-gray-700 dark:text-gray-300 text-sm font-medium mb-1.5">{{ t('auth.register.confirm_password') }}</label>
-                    <input v-model="registerForm.confirmPassword" type="password" required class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 dark:text-white">
+                    <input v-model="registerForm.confirmPassword" type="password" required class="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-md text-sm bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100">
                 </div>
                 <div>
                     <label class="block text-gray-700 dark:text-gray-300 text-sm font-medium mb-1.5">{{ t('auth.pow.label') }}</label>
@@ -257,7 +258,7 @@
             <form v-else-if="mode === 'forgot'" @submit.prevent="submitForgot" class="space-y-4">
                 <div>
                     <label class="block text-gray-700 dark:text-gray-300 text-sm font-medium mb-1.5">{{ t('auth.forgot.email') }}</label>
-                    <input v-model="forgotEmail" type="email" required class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 dark:text-white">
+                    <input v-model="forgotEmail" type="email" required class="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-md text-sm bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100">
                 </div>
                 <div>
                     <label class="block text-gray-700 dark:text-gray-300 text-sm font-medium mb-1.5">{{ t('auth.pow.label') }}</label>
@@ -285,11 +286,11 @@
                             </div>
                         </div>
                     </div>
-                    <input v-model="resetForm.password" type="password" required class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 dark:text-white">
+                    <input v-model="resetForm.password" type="password" required class="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-md text-sm bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100">
                 </div>
                 <div>
                     <label class="block text-gray-700 dark:text-gray-300 text-sm font-medium mb-1.5">{{ t('auth.reset.confirm_password') }}</label>
-                    <input v-model="resetForm.confirmPassword" type="password" required class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 dark:text-white">
+                    <input v-model="resetForm.confirmPassword" type="password" required class="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-md text-sm bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100">
                 </div>
                 <button :disabled="loading" type="submit" class="w-full flex justify-center py-2.5 px-4 rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 transition">
                     <span v-if="loading" class="material-icons animate-spin text-sm mr-2">sync</span>
@@ -309,7 +310,7 @@
                         <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <span class="material-icons text-gray-400 text-sm">person</span>
                         </span>
-                        <input v-model="loginForm.account" type="text" class="pl-10 block w-full shadow-sm border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 sm:text-sm py-2 border bg-white dark:bg-gray-700 dark:text-white">
+                        <input v-model="loginForm.account" type="text" class="pl-9 block w-full border border-slate-300 dark:border-slate-700 rounded-md focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm py-2 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100">
                     </div>
                 </div>
                 <div>
@@ -318,7 +319,7 @@
                         <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <span class="material-icons text-gray-400 text-sm">lock</span>
                         </span>
-                        <input v-model="loginForm.password" type="password" class="pl-10 block w-full shadow-sm border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 sm:text-sm py-2 border bg-white dark:bg-gray-700 dark:text-white">
+                        <input v-model="loginForm.password" type="password" class="pl-9 block w-full border border-slate-300 dark:border-slate-700 rounded-md focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm py-2 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100">
                     </div>
                 </div>
 
@@ -337,8 +338,8 @@
                     </button>
                 </div>
 
-                <button :disabled="loading" type="submit" class="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 transition">
-                    <span v-if="loading" class="material-icons animate-spin text-sm mr-2">sync</span>
+                <button :disabled="loading" type="submit" class="w-full ui-btn-primary py-2.5">
+                    <span v-if="loading" class="material-icons animate-spin text-[16px]">sync</span>
                     {{ loading ? t('auth.login.signing_in') : t('auth.login.submit') }}
                 </button>
 
@@ -485,7 +486,12 @@ export default {
             this.mode = target;
             this.powPayload = '';
             if (window.history && window.location.search) {
-                window.history.replaceState({}, '', window.location.pathname);
+                const params = new URLSearchParams(window.location.search);
+                params.delete('mode');
+                params.delete('token');
+                const remaining = params.toString();
+                const nextUrl = remaining ? `${window.location.pathname}?${remaining}` : window.location.pathname;
+                window.history.replaceState({}, '', nextUrl);
             }
         },
         goToSetupStep(step) {

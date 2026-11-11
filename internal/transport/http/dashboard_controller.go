@@ -49,6 +49,8 @@ func (ctl *DashboardController) LayoutMenu(c *gin.Context) {
 		{id: "system_config", icon: "settings", perm: database.PermSystemConfigView},
 		{id: "user_manager", icon: "people", perm: database.PermUserManagerView},
 		{id: "scraper_modules", icon: "cloud_download", perm: database.PermScraperView},
+		{id: "classification", icon: "auto_awesome", perm: database.PermClassificationView},
+		{id: "data_manager", icon: "inventory_2", perm: database.PermDataView},
 		{id: "push_modules", icon: "send", perm: database.PermPushModuleView},
 		{id: "schedule", icon: "schedule", perm: database.PermScheduleView},
 		{id: "frontend_config", icon: "newspaper", perm: database.PermFrontendConfigView},

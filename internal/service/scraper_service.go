@@ -13,6 +13,7 @@ import (
 	"github.com/UtopiaXC/UtopiaDaily/internal/module"
 	"github.com/UtopiaXC/UtopiaDaily/internal/module/external"
 	"github.com/UtopiaXC/UtopiaDaily/internal/module/registry"
+	"github.com/UtopiaXC/UtopiaDaily/internal/module/scrapers"
 	"github.com/UtopiaXC/UtopiaDaily/internal/repository"
 )
 
@@ -76,6 +77,7 @@ type ScraperService struct {
 	scraperRepo *repository.ScraperRepository
 	cfgRepo     *repository.ConfigRepository
 	classifier  classification.Classifier
+	clsSvc      *ClassificationService
 	bus         *event.Bus
 	onReload    func()
 }
@@ -96,6 +98,10 @@ func NewScraperService(
 		classifier:  classifier,
 		bus:         bus,
 	}
+}
+
+func (s *ScraperService) AttachClassificationService(clsSvc *ClassificationService) {
+	s.clsSvc = clsSvc
 }
 
 func (s *ScraperService) SetOnScheduleReload(fn func()) {
@@ -219,24 +225,28 @@ func (s *ScraperService) RunTask(ctx context.Context, id, taskKey string) (int, 
 		return 0, common.NewAPIError(http.StatusInternalServerError, common.ErrDatabaseError)
 	}
 
-	if inserted > 0 && s.classifier != nil {
-		inputs := make([]classification.InputItem, 0, len(savedRecords))
-		idByFP := make(map[string]uint, len(savedRecords))
-		for _, rec := range savedRecords {
-			inputs = append(inputs, classification.InputItem{
-				Fingerprint: rec.Fingerprint,
-				Title:       rec.Title,
-				Summary:     rec.Summary,
-				Content:     rec.Content,
-				SourceName:  rec.Source,
-			})
-			idByFP[rec.Fingerprint] = rec.ID
-		}
-		if results, clsErr := s.classifier.ClassifyBatch(ctx, inputs); clsErr == nil {
-			for _, cr := range results {
-				if len(cr.Tags) > 0 {
-					if rid, exists := idByFP[cr.Fingerprint]; exists {
-						_ = s.scraperRepo.AttachTags(rid, cr.Tags)
+	if inserted > 0 {
+		if s.clsSvc != nil {
+			_, _ = s.clsSvc.EnqueueSavedResults(savedRecords)
+		} else if s.classifier != nil {
+			inputs := make([]classification.InputItem, 0, len(savedRecords))
+			idByFP := make(map[string]uint, len(savedRecords))
+			for _, rec := range savedRecords {
+				inputs = append(inputs, classification.InputItem{
+					Fingerprint: rec.Fingerprint,
+					Title:       rec.Title,
+					Summary:     rec.Summary,
+					Content:     rec.Content,
+					SourceName:  rec.Source,
+				})
+				idByFP[rec.Fingerprint] = rec.ID
+			}
+			if results, clsErr := s.classifier.ClassifyBatch(ctx, inputs); clsErr == nil {
+				for _, cr := range results {
+					if len(cr.Tags) > 0 {
+						if rid, exists := idByFP[cr.Fingerprint]; exists {
+							_ = s.scraperRepo.AttachTags(rid, cr.Tags)
+						}
 					}
 				}
 			}
@@ -252,6 +262,33 @@ func (s *ScraperService) RunTask(ctx context.Context, id, taskKey string) (int, 
 		}, map[string]any{"total_fetched": len(items), "inserted": inserted}, "scraper", id)
 	}
 	return inserted, nil
+}
+
+func (s *ScraperService) GenerateBilibiliQR(ctx context.Context) (*scrapers.BilibiliQRSession, error) {
+	sess, err := scrapers.GenerateBilibiliQR(ctx)
+	if err != nil {
+		return nil, common.NewAPIError(http.StatusBadGateway, common.ErrBilibiliQRFailed, map[string]any{"detail": err.Error()})
+	}
+	return sess, nil
+}
+
+func (s *ScraperService) PollBilibiliQR(ctx context.Context, qrcodeKey string) (*scrapers.BilibiliQRPollResult, error) {
+	res, err := scrapers.PollBilibiliQR(ctx, qrcodeKey)
+	if err != nil {
+		return nil, common.NewAPIError(http.StatusBadGateway, common.ErrBilibiliQRFailed, map[string]any{"detail": err.Error()})
+	}
+	if res.Status == "confirmed" && res.Cookie != "" {
+		if contract, ok := s.reg.GetScraper("bilibili_ranking_and_update"); ok {
+			if err := s.modRepo.SaveConfigValues("bilibili_ranking_and_update", contract.ConfigSchema(), map[string]any{
+				"cookie": res.Cookie,
+			}); err != nil {
+				return nil, common.NewAPIError(http.StatusInternalServerError, common.ErrDatabaseError)
+			}
+		}
+		// Never expose full raw session cookie back in poll response
+		res.Cookie = "********"
+	}
+	return res, nil
 }
 
 func buildModuleDetailView(modRec *model.Module, contract module.Module, rows []model.ModuleConfig, jobs []model.ScheduleJob) *ModuleDetailView {

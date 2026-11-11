@@ -7,7 +7,7 @@ import xml.etree.ElementTree as ET
 
 
 FEED_URL = "https://news.ycombinator.com/rss"
-HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; UtopiaDaily/2.0)"}
+HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; UtopiaDaily/0.2.0)"}
 
 
 def fetch_rss():

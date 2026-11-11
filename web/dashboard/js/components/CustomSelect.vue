@@ -1,34 +1,47 @@
 <template>
     <div class="relative inline-block text-left w-full" ref="dropdown">
-        <button v-if="variant === 'default'" @click="!disabled && toggle()" type="button"
+        <button
+            v-if="variant === 'default'"
+            @click="!disabled && toggle()"
+            type="button"
             :disabled="disabled"
-            class="flex items-center justify-between w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition shadow-sm text-gray-900 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed">
+            class="flex items-center justify-between w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition text-slate-900 dark:text-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
             <span class="block truncate mr-2">{{ selectedLabel }}</span>
-            <span class="material-icons text-gray-400 dark:text-gray-300 text-sm">expand_more</span>
+            <span class="material-icons text-slate-400 text-[18px]">expand_more</span>
         </button>
 
-        <button v-else-if="variant === 'icon'" @click="!disabled && toggle()" type="button"
+        <button
+            v-else-if="variant === 'icon'"
+            @click="!disabled && toggle()"
+            type="button"
             :disabled="disabled"
-            class="p-2 rounded-full text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition disabled:opacity-50 disabled:cursor-not-allowed">
-            <span class="material-icons">language</span>
+            class="p-1.5 rounded-md border border-slate-200 dark:border-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 focus:outline-none transition disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+            <span class="material-icons text-[18px] leading-none block">language</span>
         </button>
 
-        <div v-if="isOpen"
-             :class="[
-                'absolute z-[100] mt-1 bg-white dark:bg-gray-800 shadow-lg rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm max-h-60 border border-gray-100 dark:border-gray-700',
+        <div
+            v-if="isOpen"
+            :class="[
+                'absolute z-[100] mt-1 bg-white dark:bg-slate-900 rounded-md py-1 text-sm overflow-auto focus:outline-none max-h-60 border border-slate-200 dark:border-slate-700',
                 'min-w-full w-max max-w-xs',
                 variant === 'icon' ? 'right-0 origin-top-right' : 'left-0 origin-top-left'
-             ]">
+            ]"
+        >
             <ul tabindex="-1" role="listbox">
-                <li v-for="option in normalizedOptions" :key="option.value"
+                <li
+                    v-for="option in normalizedOptions"
+                    :key="option.value"
                     @click="select(option)"
-                    class="text-gray-900 dark:text-gray-200 cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-blue-50 dark:hover:bg-gray-700 transition"
-                    role="option">
+                    class="text-slate-800 dark:text-slate-200 cursor-pointer select-none relative py-1.5 pl-3 pr-9 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                    role="option"
+                >
                     <span :class="['block truncate', isSelected(option) ? 'font-semibold text-blue-600 dark:text-blue-400' : 'font-normal']">
                         {{ option.label }}
                     </span>
-                    <span v-if="isSelected(option)" class="text-blue-600 dark:text-blue-400 absolute inset-y-0 right-0 flex items-center pr-4">
-                        <span class="material-icons text-sm">check</span>
+                    <span v-if="isSelected(option)" class="text-blue-600 dark:text-blue-400 absolute inset-y-0 right-0 flex items-center pr-3">
+                        <span class="material-icons text-[16px]">check</span>
                     </span>
                 </li>
             </ul>
@@ -57,7 +70,7 @@ export default {
     data() {
         return {
             isOpen: false
-        }
+        };
     },
     computed: {
         normalizedOptions() {
@@ -97,5 +110,5 @@ export default {
     unmounted() {
         document.removeEventListener('click', this.handleClickOutside);
     }
-}
+};
 </script>

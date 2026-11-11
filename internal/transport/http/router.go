@@ -19,15 +19,17 @@ type RouterDependencies struct {
 	Mode       string
 	JWTManager *security.JWTManager
 
-	Common    *CommonController
-	Auth      *AuthController
-	Dashboard *DashboardController
-	Config    *ConfigController
-	User      *UserController
-	Scraper   *ScraperController
-	Push      *PushController
-	Schedule  *ScheduleController
-	Newspaper *NewspaperController
+	Common         *CommonController
+	Auth           *AuthController
+	Dashboard      *DashboardController
+	Config         *ConfigController
+	User           *UserController
+	Scraper        *ScraperController
+	Push           *PushController
+	Schedule       *ScheduleController
+	Newspaper      *NewspaperController
+	Classification *ClassificationController
+	Data           *DataController
 
 	DashboardFS fs.FS
 	NewspaperFS fs.FS
@@ -118,12 +120,14 @@ func NewRouter(deps RouterDependencies) *gin.Engine {
 			feCfgView.Use(security.RequirePermission(database.PermFrontendConfigView))
 			{
 				feCfgView.GET("", deps.Config.ListFrontendConfigs)
+				feCfgView.GET("/modules", deps.Newspaper.ListModuleConfigs)
 			}
 
 			feCfgEdit := dash.Group("/frontend-config")
 			feCfgEdit.Use(security.RequirePermission(database.PermFrontendConfigEdit))
 			{
 				feCfgEdit.PUT("", deps.Config.UpdateFrontendConfigsBatch)
+				feCfgEdit.PUT("/modules", deps.Newspaper.SaveModuleConfigs)
 				feCfgEdit.PUT("/:key", deps.Config.UpdateFrontendConfig)
 			}
 
@@ -167,6 +171,8 @@ func NewRouter(deps RouterDependencies) *gin.Engine {
 				scraperEdit.POST("/modules/:id/config", deps.Scraper.SaveConfig)
 				scraperEdit.POST("/modules/:id/test", deps.Scraper.TestConfig)
 				scraperEdit.POST("/modules/:id/tasks/:task/run", deps.Scraper.RunTask)
+				scraperEdit.POST("/bilibili/qrcode/generate", deps.Scraper.GenerateBilibiliQR)
+				scraperEdit.GET("/bilibili/qrcode/poll", deps.Scraper.PollBilibiliQR)
 			}
 
 			pushView := dash.Group("/push")
@@ -198,8 +204,65 @@ func NewRouter(deps RouterDependencies) *gin.Engine {
 			schedEdit := dash.Group("/schedule")
 			schedEdit.Use(security.RequirePermission(database.PermScheduleEdit))
 			{
+				schedEdit.PUT("", deps.Schedule.BatchUpdate)
 				schedEdit.PUT("/:id", deps.Schedule.Update)
 				schedEdit.POST("/:id/run", deps.Schedule.RunNow)
+			}
+
+			clsView := dash.Group("/classification")
+			clsView.Use(security.RequirePermission(database.PermClassificationView))
+			{
+				clsView.GET("/overview", deps.Classification.Overview)
+				clsView.GET("/profiles", deps.Classification.ListProfiles)
+				clsView.GET("/modules/:id", deps.Classification.GetModuleConfig)
+				clsView.GET("/queue/status", deps.Classification.QueueStatus)
+				clsView.GET("/queue/tasks", deps.Classification.ListQueueTasks)
+				clsView.GET("/queue/tasks/:id", deps.Classification.GetQueueTaskDetail)
+				clsView.GET("/llm/ollama/models", deps.Classification.ListOllamaModels)
+				clsView.GET("/jobs", deps.Classification.ListJobs)
+				clsView.GET("/jobs/:id", deps.Classification.GetJob)
+			}
+
+			clsEdit := dash.Group("/classification")
+			clsEdit.Use(security.RequirePermission(database.PermClassificationEdit))
+			{
+				clsEdit.POST("/onnx/prepare-env", deps.Classification.PrepareONNXEnv)
+				clsEdit.POST("/onnx/models/download", deps.Classification.DownloadONNXModel)
+				clsEdit.DELETE("/onnx/models/:name", deps.Classification.DeleteONNXModel)
+				clsEdit.POST("/llm/ollama/pull", deps.Classification.PullOllamaModel)
+				clsEdit.POST("/jobs/:id/cancel", deps.Classification.CancelJob)
+				clsEdit.DELETE("/jobs/:id", deps.Classification.DismissJob)
+				clsEdit.POST("/profiles", deps.Classification.CreateProfile)
+				clsEdit.PUT("/profiles/:id", deps.Classification.UpdateProfile)
+				clsEdit.DELETE("/profiles/:id", deps.Classification.DeleteProfile)
+				clsEdit.POST("/profiles/:id/load-default", deps.Classification.LoadDefaultProfile)
+				clsEdit.PUT("/modules/:id", deps.Classification.SaveModuleConfig)
+				clsEdit.POST("/queue/pause", deps.Classification.PauseQueue)
+				clsEdit.POST("/queue/resume", deps.Classification.ResumeQueue)
+				clsEdit.POST("/queue/enqueue-untagged", deps.Classification.EnqueueUntagged)
+				clsEdit.POST("/queue/cancel-pending", deps.Classification.CancelPending)
+				clsEdit.POST("/queue/retry-failed", deps.Classification.RetryFailed)
+				clsEdit.POST("/queue/clear-finished", deps.Classification.ClearFinished)
+				clsEdit.POST("/queue/tasks/:id/cancel", deps.Classification.CancelTask)
+				clsEdit.POST("/queue/tasks/:id/retry", deps.Classification.RetryTask)
+			}
+
+			dataView := dash.Group("/data")
+			dataView.Use(security.RequirePermission(database.PermDataView))
+			{
+				dataView.GET("/articles", deps.Data.List)
+				dataView.GET("/articles/:id", deps.Data.Detail)
+				dataView.GET("/tags", deps.Data.ListTags)
+			}
+
+			dataEdit := dash.Group("/data")
+			dataEdit.Use(security.RequirePermission(database.PermDataEdit))
+			{
+				dataEdit.POST("/articles/delete", deps.Data.DeleteBatch)
+				dataEdit.DELETE("/articles/:id", deps.Data.DeleteOne)
+				dataEdit.POST("/articles/:id/tags", deps.Data.AddTag)
+				dataEdit.DELETE("/articles/:id/tags/:tag_id", deps.Data.RemoveTag)
+				dataEdit.POST("/articles/reclassify", deps.Data.Reclassify)
 			}
 
 			userPush := dash.Group("/user-push")

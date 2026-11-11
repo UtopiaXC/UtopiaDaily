@@ -15,6 +15,8 @@ const (
 	SourceExternal = "external"
 )
 
+var DefaultVersion = "0.2.0"
+
 type Metadata struct {
 	ID       string `json:"id"`
 	Kind     string `json:"kind"`

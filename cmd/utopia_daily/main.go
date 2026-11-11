@@ -68,6 +68,8 @@ func main() {
 	modRepo := repository.NewModuleRepository(db)
 	scraperRepo := repository.NewScraperRepository(db)
 	pushRepo := repository.NewPushRepository(db)
+	clsRepo := repository.NewClassificationRepository(db)
+	newsRepo := repository.NewNewspaperRepository(db)
 
 	if lvl, err := cfgRepo.Get("log_level"); err == nil && lvl != "" {
 		logger.SetLevel(lvl)
@@ -102,11 +104,17 @@ func main() {
 	authSvc := service.NewAuthService(userRepo, roleRepo, cfgRepo, jwtMgr, captchaProvider, attemptsTracker, bus, cfg)
 	cfgSvc := service.NewConfigService(cfgRepo, userRepo, scraperRepo, i18nAssembler, classifier, bus, cfg)
 	userSvc := service.NewUserService(userRepo, roleRepo, bus)
+	clsSvc := service.NewClassificationService(clsRepo, cfgRepo, modRepo, bus, cfg)
+	cfgSvc.AttachClassificationService(clsSvc)
 	scraperSvc := service.NewScraperService(modRegistry, modRepo, scraperRepo, cfgRepo, classifier, bus)
+	scraperSvc.AttachClassificationService(clsSvc)
 	pushSvc := service.NewPushService(modRegistry, modRepo, pushRepo, scraperRepo, cfgRepo, userRepo, bus)
 	dispatcher := service.NewTaskDispatcher(scraperSvc, pushSvc)
 	schedSvc := service.NewScheduleService(modRepo, dispatcher)
-	newsSvc := service.NewNewspaperService(scraperRepo, cfgSvc)
+	newsSvc := service.NewNewspaperService(scraperRepo, newsRepo, modRepo, cfgSvc)
+	dataSvc := service.NewDataService(scraperRepo, clsRepo, clsSvc)
+
+	clsSvc.Start()
 
 	if err := scraperSvc.SyncAllModules(); err != nil {
 		slog.Error("Initial module sync failed", "error", err)
@@ -140,19 +148,21 @@ func main() {
 	}
 
 	engine := transport.NewRouter(transport.RouterDependencies{
-		Mode:        cfg.Server.Mode,
-		JWTManager:  jwtMgr,
-		Common:      transport.NewCommonController(cfgSvc, i18nAssembler),
-		Auth:        transport.NewAuthController(authSvc),
-		Dashboard:   transport.NewDashboardController(modRepo, scraperRepo, eventRepo, cfgSvc),
-		Config:      transport.NewConfigController(cfgSvc),
-		User:        transport.NewUserController(userSvc),
-		Scraper:     transport.NewScraperController(scraperSvc),
-		Push:        transport.NewPushController(pushSvc, scraperSvc),
-		Schedule:    transport.NewScheduleController(schedSvc),
-		Newspaper:   transport.NewNewspaperController(newsSvc),
-		DashboardFS: dashFS,
-		NewspaperFS: newsFS,
+		Mode:           cfg.Server.Mode,
+		JWTManager:     jwtMgr,
+		Common:         transport.NewCommonController(cfgSvc, i18nAssembler),
+		Auth:           transport.NewAuthController(authSvc),
+		Dashboard:      transport.NewDashboardController(modRepo, scraperRepo, eventRepo, cfgSvc),
+		Config:         transport.NewConfigController(cfgSvc),
+		User:           transport.NewUserController(userSvc),
+		Scraper:        transport.NewScraperController(scraperSvc),
+		Push:           transport.NewPushController(pushSvc, scraperSvc),
+		Schedule:       transport.NewScheduleController(schedSvc),
+		Newspaper:      transport.NewNewspaperController(newsSvc, cfgSvc),
+		Classification: transport.NewClassificationController(clsSvc),
+		Data:           transport.NewDataController(dataSvc, clsSvc),
+		DashboardFS:    dashFS,
+		NewspaperFS:    newsFS,
 	})
 
 	addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)
@@ -181,6 +191,7 @@ func main() {
 	<-stopCh
 
 	slog.Info("Shutting down server...")
+	clsSvc.Stop()
 	sched.Stop()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)

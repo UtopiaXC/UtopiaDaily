@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/UtopiaXC/UtopiaDaily/internal/classification"
 	"github.com/UtopiaXC/UtopiaDaily/internal/config"
 	"github.com/UtopiaXC/UtopiaDaily/internal/logger"
 	"github.com/UtopiaXC/UtopiaDaily/internal/model"
@@ -12,6 +13,7 @@ import (
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 func Open(cfg *config.Config) (*gorm.DB, error) {
@@ -72,6 +74,9 @@ func Open(cfg *config.Config) (*gorm.DB, error) {
 }
 
 func AutoMigrate(db *gorm.DB) error {
+	if db.Migrator().HasTable(&model.Tag{}) && !db.Migrator().HasColumn(&model.Tag{}, "group_id") {
+		_ = db.Migrator().DropTable(&model.ScraperResultTag{}, &model.TagKeyword{}, &model.Tag{})
+	}
 	return db.AutoMigrate(
 		&model.Permission{},
 		&model.Role{},
@@ -87,9 +92,14 @@ func AutoMigrate(db *gorm.DB) error {
 		&model.ScheduleJob{},
 		&model.ScraperResult{},
 		&model.ScraperResultAttachment{},
+		&model.TagProfile{},
+		&model.TagGroup{},
 		&model.Tag{},
 		&model.TagKeyword{},
 		&model.ScraperResultTag{},
+		&model.ModuleClassificationConfig{},
+		&model.ClassificationTask{},
+		&model.NewspaperModuleConfig{},
 		&model.UserPushSubscription{},
 		&model.UserPushSource{},
 		&model.PushDeliveryLog{},
@@ -99,6 +109,7 @@ func AutoMigrate(db *gorm.DB) error {
 func SeedDefaults(db *gorm.DB, cfg *config.Config) error {
 	now := time.Now()
 
+	createdPerms := make(map[string]bool)
 	for _, code := range AllPermissions() {
 		var p model.Permission
 		if err := db.Where("code = ?", code).First(&p).Error; err != nil {
@@ -110,6 +121,7 @@ func SeedDefaults(db *gorm.DB, cfg *config.Config) error {
 			if err := db.Create(&p).Error; err != nil {
 				return err
 			}
+			createdPerms[code] = true
 		}
 	}
 
@@ -163,6 +175,16 @@ func SeedDefaults(db *gorm.DB, cfg *config.Config) error {
 		}
 		if err := db.Model(&userRole).Association("Permissions").Replace(defPerms); err != nil {
 			return err
+		}
+	} else if createdPerms[PermNewspaperView] && userRole.ID > 0 {
+		if p, ok := permByCode[PermNewspaperView]; ok {
+			var existingCount int64
+			_ = db.Table("role_permissions").Where("role_id = ? AND permission_id = ?", userRole.ID, p.ID).Count(&existingCount).Error
+			if existingCount == 0 {
+				if err := db.Model(&userRole).Association("Permissions").Append(&p); err != nil {
+					return err
+				}
+			}
 		}
 	}
 
@@ -242,6 +264,83 @@ func SeedDefaults(db *gorm.DB, cfg *config.Config) error {
 				"value":      config.Version,
 				"updated_at": now,
 			})
+		}
+	}
+
+	var profileCount int64
+	if err := db.Model(&model.TagProfile{}).Count(&profileCount).Error; err == nil && profileCount == 0 {
+		locale := "en_US"
+		var locCfg model.SystemConfig
+		if err := db.Where("key = ?", "default_locale").First(&locCfg).Error; err == nil && strings.TrimSpace(locCfg.Value) != "" {
+			locale = locCfg.Value
+		} else if cfg != nil && strings.TrimSpace(cfg.Site.DefaultLocale) != "" {
+			locale = cfg.Site.DefaultLocale
+		}
+		tpl := classification.DefaultTemplate(locale)
+		if err := db.Transaction(func(tx *gorm.DB) error {
+			p := model.TagProfile{
+				Name:        tpl.Name,
+				Description: tpl.Description,
+				IsDefault:   true,
+				CreatedAt:   now,
+				UpdatedAt:   now,
+			}
+			if err := tx.Create(&p).Error; err != nil {
+				return err
+			}
+			for gIdx, gSpec := range tpl.Groups {
+				g := model.TagGroup{
+					ProfileID:     p.ID,
+					Name:          gSpec.Name,
+					Description:   gSpec.Description,
+					SelectionMode: gSpec.SelectionMode,
+					MaxResults:    gSpec.MaxResults,
+					SortOrder:     gIdx,
+				}
+				if err := tx.Create(&g).Error; err != nil {
+					return err
+				}
+				for tIdx, tSpec := range gSpec.Tags {
+					t := model.Tag{
+						GroupID:     g.ID,
+						Name:        tSpec.Name,
+						Description: tSpec.Description,
+						Priority:    tSpec.Priority,
+						SortOrder:   tIdx,
+						CreatedAt:   now,
+					}
+					if err := tx.Create(&t).Error; err != nil {
+						return err
+					}
+					for _, kw := range tSpec.Keywords {
+						trimmed := strings.TrimSpace(kw)
+						if trimmed == "" {
+							continue
+						}
+						_ = tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&model.TagKeyword{
+							TagID:   t.ID,
+							Keyword: trimmed,
+						}).Error
+					}
+				}
+			}
+			return nil
+		}); err != nil {
+			return err
+		}
+	}
+
+	var scraperMods []model.Module
+	if err := db.Where("kind = ?", model.ModuleKindScraper).Find(&scraperMods).Error; err == nil {
+		for _, m := range scraperMods {
+			_ = db.Clauses(clause.OnConflict{DoNothing: true}).Create(&model.NewspaperModuleConfig{
+				ModuleID:             m.ID,
+				Visible:              true,
+				LookbackDaysOverride: 0,
+				MaxItemsOverride:     0,
+				SortOrder:            0,
+				UpdatedAt:            now,
+			}).Error
 		}
 	}
 

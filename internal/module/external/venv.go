@@ -5,10 +5,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 )
 
 func IsPythonCommand(cmd []string) bool {
@@ -51,7 +53,47 @@ func ResolveCommand(dir string, command []string) []string {
 	return out
 }
 
+type lineNotifyWriter struct {
+	buf     bytes.Buffer
+	pending string
+	onLine  func(string)
+	mu      sync.Mutex
+}
+
+func (w *lineNotifyWriter) Write(p []byte) (int, error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.buf.Write(p)
+	if w.onLine == nil {
+		return len(p), nil
+	}
+	normalized := strings.ReplaceAll(string(p), "\r", "\n")
+	w.pending += normalized
+	for {
+		idx := strings.IndexByte(w.pending, '\n')
+		if idx < 0 {
+			break
+		}
+		line := strings.TrimSpace(w.pending[:idx])
+		w.pending = w.pending[idx+1:]
+		if line != "" {
+			w.onLine(line)
+		}
+	}
+	return len(p), nil
+}
+
+func (w *lineNotifyWriter) String() string {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return w.buf.String()
+}
+
 func SetupVenv(ctx context.Context, dir string) (string, error) {
+	return SetupVenvWithProgress(ctx, dir, nil)
+}
+
+func SetupVenvWithProgress(ctx context.Context, dir string, onLine func(string)) (string, error) {
 	absDir, err := filepath.Abs(dir)
 	if err != nil {
 		absDir = dir
@@ -63,20 +105,27 @@ func SetupVenv(ctx context.Context, dir string) (string, error) {
 		hasReq = true
 	}
 
-	var out bytes.Buffer
+	out := &lineNotifyWriter{onLine: onLine}
+	runStep := func(name string, args ...string) error {
+		cmd := exec.CommandContext(ctx, name, args...)
+		cmd.Stdout = out
+		cmd.Stderr = io.Writer(out)
+		return cmd.Run()
+	}
+
 	if uvPath, err := exec.LookPath("uv"); err == nil {
-		createCmd := exec.CommandContext(ctx, uvPath, "venv", venvDir)
-		createCmd.Stdout = &out
-		createCmd.Stderr = &out
-		if err := createCmd.Run(); err != nil {
+		if onLine != nil {
+			onLine("uv venv " + venvDir)
+		}
+		if err := runStep(uvPath, "venv", venvDir); err != nil {
 			return out.String(), fmt.Errorf("uv venv failed: %w", err)
 		}
 		if hasReq {
+			if onLine != nil {
+				onLine("uv pip install -r requirements.txt")
+			}
 			pyBin := VenvPythonPath(absDir)
-			installCmd := exec.CommandContext(ctx, uvPath, "pip", "install", "--python", pyBin, "-r", reqFile)
-			installCmd.Stdout = &out
-			installCmd.Stderr = &out
-			if err := installCmd.Run(); err != nil {
+			if err := runStep(uvPath, "pip", "install", "--python", pyBin, "-r", reqFile); err != nil {
 				return out.String(), fmt.Errorf("uv pip install failed: %w", err)
 			}
 		}
@@ -91,18 +140,18 @@ func SetupVenv(ctx context.Context, dir string) (string, error) {
 		}
 	}
 
-	createCmd := exec.CommandContext(ctx, pyHost, "-m", "venv", venvDir)
-	createCmd.Stdout = &out
-	createCmd.Stderr = &out
-	if err := createCmd.Run(); err != nil {
+	if onLine != nil {
+		onLine("python3 -m venv " + venvDir)
+	}
+	if err := runStep(pyHost, "-m", "venv", venvDir); err != nil {
 		return out.String(), fmt.Errorf("python venv failed: %w", err)
 	}
 	if hasReq {
+		if onLine != nil {
+			onLine("pip install -r requirements.txt")
+		}
 		pipBin := filepath.Join(venvDir, "bin", "pip")
-		installCmd := exec.CommandContext(ctx, pipBin, "install", "-r", reqFile)
-		installCmd.Stdout = &out
-		installCmd.Stderr = &out
-		if err := installCmd.Run(); err != nil {
+		if err := runStep(pipBin, "install", "--progress-bar", "off", "-r", reqFile); err != nil {
 			return out.String(), fmt.Errorf("pip install failed: %w", err)
 		}
 	}

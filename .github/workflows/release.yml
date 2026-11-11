@@ -1,0 +1,306 @@
+name: Release
+run-name: Release ${{ github.ref_name }} by @${{ github.actor }}
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Release tag, e.g. v0.2.0'
+        required: false
+        default: ''
+      push:
+        description: 'Push Docker images and create GitHub Release'
+        required: true
+        type: boolean
+        default: true
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  version:
+    name: Resolve Version
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.resolve.outputs.tag }}
+      version: ${{ steps.resolve.outputs.version }}
+      has_tag: ${{ steps.resolve.outputs.has_tag }}
+      prerelease: ${{ steps.resolve.outputs.prerelease }}
+      note_file: ${{ steps.resolve.outputs.note_file }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Resolve Version and Release Notes
+        id: resolve
+        shell: bash
+        env:
+          INPUT_TAG_NAME: ${{ inputs.tag_name }}
+        run: |
+          RAW_TAG="${GITHUB_REF_NAME}"
+          if [ -n "$INPUT_TAG_NAME" ]; then
+            RAW_TAG="$INPUT_TAG_NAME"
+          fi
+
+          if [[ "$RAW_TAG" == v* ]]; then
+            TAG="$RAW_TAG"
+            CLEAN_VERSION="${TAG#v}"
+            CLEAN_VERSION="${CLEAN_VERSION%+*}"
+            HAS_TAG="true"
+          else
+            SHORT_SHA="${GITHUB_SHA::7}"
+            TAG="v0.2.0-dev.${SHORT_SHA}"
+            CLEAN_VERSION="0.2.0-dev.${SHORT_SHA}"
+            HAS_TAG="false"
+          fi
+
+          if [[ "$CLEAN_VERSION" == *-* ]]; then
+            PRERELEASE="true"
+          else
+            PRERELEASE="false"
+          fi
+
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "version=${CLEAN_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "has_tag=${HAS_TAG}" >> "$GITHUB_OUTPUT"
+          echo "prerelease=${PRERELEASE}" >> "$GITHUB_OUTPUT"
+
+          NOTE_WITH_V="docs/release_notes/${TAG}.md"
+          NOTE_WITHOUT_V="docs/release_notes/${CLEAN_VERSION}.md"
+          if [ -f "$NOTE_WITH_V" ]; then
+            echo "note_file=${NOTE_WITH_V}" >> "$GITHUB_OUTPUT"
+          elif [ -f "$NOTE_WITHOUT_V" ]; then
+            echo "note_file=${NOTE_WITHOUT_V}" >> "$GITHUB_OUTPUT"
+          else
+            echo "note_file=" >> "$GITHUB_OUTPUT"
+          fi
+
+  build-binaries:
+    name: Build Multi-Platform Binaries
+    needs: version
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ needs.version.outputs.tag }}
+      VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Build Frontends
+        env:
+          APP_VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          cd web/dashboard
+          npm ci
+          npm version "${VERSION}" --no-git-tag-version --allow-same-version
+          npm run build
+          cd ../..
+
+          cd web/newspaper
+          npm ci
+          npm version "${VERSION}" --no-git-tag-version --allow-same-version
+          npm run build
+          cd ../..
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Verify Go Packages
+        run: go vet ./...
+
+      - name: Build Multi-Platform Binaries
+        run: |
+          mkdir -p dist_release
+
+          PLATFORMS=(
+            "linux/amd64"
+            "linux/arm64"
+            "darwin/amd64"
+            "darwin/arm64"
+            "windows/amd64"
+            "windows/arm64"
+          )
+
+          for PLATFORM in "${PLATFORMS[@]}"; do
+            GOOS="${PLATFORM%/*}"
+            GOARCH="${PLATFORM#*/}"
+            BIN_NAME="utopia_daily"
+            if [ "$GOOS" = "windows" ]; then
+              BIN_NAME="utopia_daily.exe"
+            fi
+
+            TARGET_DIR="utopia_daily_${TAG}_${GOOS}_${GOARCH}"
+            mkdir -p "${TARGET_DIR}/data/config" "${TARGET_DIR}/plugins/scrapers" "${TARGET_DIR}/plugins/push"
+            cp data/config/config.example.yaml "${TARGET_DIR}/data/config/config.yaml"
+            cp README.md LICENSE "${TARGET_DIR}/"
+
+            if [ -d plugins ]; then
+              cp -R plugins/. "${TARGET_DIR}/plugins/"
+              find "${TARGET_DIR}/plugins" -type d \( -name ".venv" -o -name "__pycache__" \) -prune -exec rm -rf {} +
+              if [ -f "${TARGET_DIR}/plugins/scrapers/example_hn_rss/manifest.json" ]; then
+                python3 -c "import json; p='${TARGET_DIR}/plugins/scrapers/example_hn_rss/manifest.json'; d=json.load(open(p)); d['version']='${VERSION}'; json.dump(d,open(p,'w'),indent=2)"
+              fi
+              if [ -f "${TARGET_DIR}/plugins/scrapers/example_hn_rss/main.py" ]; then
+                sed -i "s|UtopiaDaily/[0-9A-Za-z._-]*|UtopiaDaily/${VERSION}|g" "${TARGET_DIR}/plugins/scrapers/example_hn_rss/main.py"
+              fi
+            fi
+
+            CGO_ENABLED=0 GOOS="${GOOS}" GOARCH="${GOARCH}" go build \
+              -trimpath \
+              -ldflags="-s -w -X github.com/UtopiaXC/UtopiaDaily/internal/config.Version=${VERSION} -X github.com/UtopiaXC/UtopiaDaily/internal/module.DefaultVersion=${VERSION}" \
+              -o "${TARGET_DIR}/${BIN_NAME}" ./cmd/utopia_daily
+
+            if [ "$GOOS" = "windows" ]; then
+              zip -rq "dist_release/${TARGET_DIR}.zip" "${TARGET_DIR}"
+            else
+              tar -czf "dist_release/${TARGET_DIR}.tar.gz" "${TARGET_DIR}"
+            fi
+            rm -rf "${TARGET_DIR}"
+          done
+
+          (cd dist_release && sha256sum *.tar.gz *.zip > checksums.txt)
+
+      - name: Upload Binaries Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-binaries
+          path: dist_release/*
+          if-no-files-found: error
+
+  build-and-push-docker:
+    name: Build and Push Multi-Arch Docker Image
+    needs: [version, build-binaries]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Resolve Push Policy and Image Names
+        id: targets
+        shell: bash
+        env:
+          DOCKERHUB_USER: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_PASS: ${{ secrets.DOCKERHUB_TOKEN }}
+          HAS_TAG: ${{ needs.version.outputs.has_tag }}
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_PUSH: ${{ inputs.push }}
+        run: |
+          SHOULD_PUSH="false"
+          if [ "$EVENT_NAME" != "pull_request" ] && [ "$HAS_TAG" = "true" ]; then
+            if [ "$EVENT_NAME" != "workflow_dispatch" ] || [ "$INPUT_PUSH" = "true" ]; then
+              SHOULD_PUSH="true"
+            fi
+          fi
+
+          OWNER_LOWER=$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')
+          HAS_DOCKERHUB="false"
+          DOCKERHUB_LOWER=""
+
+          if [ -n "$DOCKERHUB_USER" ] && [ -n "$DOCKERHUB_PASS" ]; then
+            HAS_DOCKERHUB="true"
+            DOCKERHUB_LOWER=$(echo "${DOCKERHUB_USER}" | tr '[:upper:]' '[:lower:]')
+          fi
+
+          echo "should_push=${SHOULD_PUSH}" >> "$GITHUB_OUTPUT"
+          echo "has_dockerhub=${HAS_DOCKERHUB}" >> "$GITHUB_OUTPUT"
+          {
+            echo "images<<EOF"
+            echo "ghcr.io/${OWNER_LOWER}/utopia_daily"
+            if [ "$HAS_DOCKERHUB" = "true" ]; then
+              echo "${DOCKERHUB_LOWER}/utopia_daily"
+            fi
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: 'linux/amd64,linux/arm64'
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        if: steps.targets.outputs.should_push == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log in to Docker Hub
+        if: steps.targets.outputs.should_push == 'true' && steps.targets.outputs.has_dockerhub == 'true'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract Docker Metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.targets.outputs.images }}
+          flavor: |
+            latest=${{ needs.version.outputs.prerelease != 'true' }}
+          tags: |
+            type=raw,value=latest,enable=${{ needs.version.outputs.prerelease != 'true' }}
+            type=raw,value=${{ needs.version.outputs.tag }}
+            type=raw,value=${{ needs.version.outputs.version }}
+
+      - name: Build and Push Multi-Architecture Image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: ${{ steps.targets.outputs.should_push == 'true' }}
+          build-args: |
+            APP_VERSION=${{ needs.version.outputs.version }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  publish-release:
+    name: Create GitHub Release
+    needs: [version, build-binaries, build-and-push-docker]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    if: needs.version.outputs.has_tag == 'true' && (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.push == true))
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download Built Binaries
+        uses: actions/download-artifact@v4
+        with:
+          name: release-binaries
+          path: dist_release
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: UtopiaDaily ${{ needs.version.outputs.tag }}
+          tag_name: ${{ needs.version.outputs.tag }}
+          body_path: ${{ needs.version.outputs.note_file }}
+          generate_release_notes: ${{ needs.version.outputs.note_file == '' }}
+          files: dist_release/*
+          draft: false
+          prerelease: ${{ needs.version.outputs.prerelease == 'true' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

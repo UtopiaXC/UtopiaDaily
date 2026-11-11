@@ -99,3 +99,21 @@ func (ctl *ScraperController) RunTask(c *gin.Context) {
 	}
 	common.RespondSuccess(c, gin.H{"status": "ok", "inserted": inserted})
 }
+
+func (ctl *ScraperController) GenerateBilibiliQR(c *gin.Context) {
+	sess, err := ctl.scraperSvc.GenerateBilibiliQR(c.Request.Context())
+	if err != nil {
+		common.RespondFromError(c, err)
+		return
+	}
+	common.RespondSuccess(c, sess)
+}
+
+func (ctl *ScraperController) PollBilibiliQR(c *gin.Context) {
+	res, err := ctl.scraperSvc.PollBilibiliQR(c.Request.Context(), c.Query("qrcode_key"))
+	if err != nil {
+		common.RespondFromError(c, err)
+		return
+	}
+	common.RespondSuccess(c, res)
+}

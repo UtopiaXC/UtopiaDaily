@@ -33,25 +33,27 @@ type SystemConfigView struct {
 }
 
 type PublicSystemInfo struct {
-	Name              string `json:"name"`
-	Description       string `json:"description"`
-	Version           string `json:"version"`
-	DefaultLocale     string `json:"default_locale"`
-	AllowRegistration bool   `json:"allow_registration"`
-	SetupRequired     bool   `json:"setup_required"`
+	Name                string `json:"name"`
+	Description         string `json:"description"`
+	Version             string `json:"version"`
+	DefaultLocale       string `json:"default_locale"`
+	AllowRegistration   bool   `json:"allow_registration"`
+	SetupRequired       bool   `json:"setup_required"`
+	NewspaperVisibility string `json:"newspaper_visibility"`
 }
 
 type SiteInfoDTO struct {
-	Initialized       bool   `json:"initialized"`
-	SetupRequired     bool   `json:"setup_required"`
-	SiteName          string `json:"site_name"`
-	Description       string `json:"description"`
-	Version           string `json:"version"`
-	DefaultLocale     string `json:"default_locale"`
-	AllowRegistration bool   `json:"allow_registration"`
-	SMTPEnabled       bool   `json:"smtp_enabled"`
-	NewspaperTitle    string `json:"newspaper_title"`
-	NewspaperSubtitle string `json:"newspaper_subtitle"`
+	Initialized         bool   `json:"initialized"`
+	SetupRequired       bool   `json:"setup_required"`
+	SiteName            string `json:"site_name"`
+	Description         string `json:"description"`
+	Version             string `json:"version"`
+	DefaultLocale       string `json:"default_locale"`
+	AllowRegistration   bool   `json:"allow_registration"`
+	SMTPEnabled         bool   `json:"smtp_enabled"`
+	NewspaperTitle      string `json:"newspaper_title"`
+	NewspaperSubtitle   string `json:"newspaper_subtitle"`
+	NewspaperVisibility string `json:"newspaper_visibility"`
 }
 
 type SMTPTestInput struct {
@@ -66,10 +68,17 @@ type SMTPTestInput struct {
 }
 
 type NewspaperConfig struct {
-	Title        string `json:"title"`
-	Subtitle     string `json:"subtitle"`
-	LookbackDays int    `json:"lookback_days"`
-	MaxItems     int    `json:"max_items"`
+	Title            string `json:"title"`
+	Subtitle         string `json:"subtitle"`
+	LookbackDays     int    `json:"lookback_days"`
+	MaxItems         int    `json:"max_items"`
+	Theme            string `json:"theme"`
+	Sort             string `json:"sort"`
+	ShowTags         bool   `json:"show_tags"`
+	ShowSummary      bool   `json:"show_summary"`
+	ShowAuthor       bool   `json:"show_author"`
+	ShowSourceFilter bool   `json:"show_source_filter"`
+	AllowThemeSwitch bool   `json:"allow_theme_switch"`
 }
 
 type ConfigService struct {
@@ -78,6 +87,7 @@ type ConfigService struct {
 	scraperRepo *repository.ScraperRepository
 	i18nMgr     *i18n.Assembler
 	classifier  classification.Classifier
+	clsSvc      *ClassificationService
 	bus         *event.Bus
 	baseCfg     *config.Config
 }
@@ -132,13 +142,30 @@ func (s *ConfigService) GetPublicSystemInfo() PublicSystemInfo {
 		defLocale = "en_US"
 	}
 	return PublicSystemInfo{
-		Name:              name,
-		Description:       desc,
-		Version:           config.Version,
-		DefaultLocale:     defLocale,
-		AllowRegistration: m["allow_registration"] == "true" && m["smtp_enabled"] == "true",
-		SetupRequired:     !hasAdmin,
+		Name:                name,
+		Description:         desc,
+		Version:             config.Version,
+		DefaultLocale:       defLocale,
+		AllowRegistration:   m["allow_registration"] == "true" && m["smtp_enabled"] == "true",
+		SetupRequired:       !hasAdmin,
+		NewspaperVisibility: normalizeVisibility(m["newspaper_visibility"]),
 	}
+}
+
+func (s *ConfigService) AttachClassificationService(clsSvc *ClassificationService) {
+	s.clsSvc = clsSvc
+}
+
+func (s *ConfigService) GetNewspaperVisibility() string {
+	v, _ := s.cfgRepo.Get("newspaper_visibility")
+	return normalizeVisibility(v)
+}
+
+func normalizeVisibility(v string) string {
+	if strings.EqualFold(strings.TrimSpace(v), "registered") {
+		return "registered"
+	}
+	return "public"
 }
 
 func (s *ConfigService) GetSiteInfo() SiteInfoDTO {
@@ -161,17 +188,26 @@ func (s *ConfigService) GetSiteInfo() SiteInfoDTO {
 	}
 	newsCfg := s.GetNewspaperConfig()
 	return SiteInfoDTO{
-		Initialized:       hasAdmin,
-		SetupRequired:     !hasAdmin,
-		SiteName:          name,
-		Description:       desc,
-		Version:           config.Version,
-		DefaultLocale:     defLocale,
-		AllowRegistration: m["allow_registration"] == "true" && m["smtp_enabled"] == "true",
-		SMTPEnabled:       m["smtp_enabled"] == "true",
-		NewspaperTitle:    newsCfg.Title,
-		NewspaperSubtitle: newsCfg.Subtitle,
+		Initialized:         hasAdmin,
+		SetupRequired:       !hasAdmin,
+		SiteName:            name,
+		Description:         desc,
+		Version:             config.Version,
+		DefaultLocale:       defLocale,
+		AllowRegistration:   m["allow_registration"] == "true" && m["smtp_enabled"] == "true",
+		SMTPEnabled:         m["smtp_enabled"] == "true",
+		NewspaperTitle:      newsCfg.Title,
+		NewspaperSubtitle:   newsCfg.Subtitle,
+		NewspaperVisibility: normalizeVisibility(m["newspaper_visibility"]),
 	}
+}
+
+func parseConfigBoolDefault(m map[string]string, key string, def bool) bool {
+	val, ok := m[key]
+	if !ok || strings.TrimSpace(val) == "" {
+		return def
+	}
+	return strings.EqualFold(strings.TrimSpace(val), "true")
 }
 
 func (s *ConfigService) GetNewspaperConfig() NewspaperConfig {
@@ -195,11 +231,26 @@ func (s *ConfigService) GetNewspaperConfig() NewspaperConfig {
 	if maxItems <= 0 {
 		maxItems = 100
 	}
+	theme := strings.ToLower(strings.TrimSpace(m["newspaper_theme"]))
+	if theme != "classic" && theme != "modern" && theme != "feed" {
+		theme = "classic"
+	}
+	sortMode := strings.ToLower(strings.TrimSpace(m["newspaper_sort"]))
+	if sortMode != "newest" && sortMode != "source" {
+		sortMode = "newest"
+	}
 	return NewspaperConfig{
-		Title:        title,
-		Subtitle:     subtitle,
-		LookbackDays: lookback,
-		MaxItems:     maxItems,
+		Title:            title,
+		Subtitle:         subtitle,
+		LookbackDays:     lookback,
+		MaxItems:         maxItems,
+		Theme:            theme,
+		Sort:             sortMode,
+		ShowTags:         parseConfigBoolDefault(m, "newspaper_show_tags", true),
+		ShowSummary:      parseConfigBoolDefault(m, "newspaper_show_summary", false),
+		ShowAuthor:       parseConfigBoolDefault(m, "newspaper_show_author", true),
+		ShowSourceFilter: parseConfigBoolDefault(m, "newspaper_show_source_filter", true),
+		AllowThemeSwitch: parseConfigBoolDefault(m, "newspaper_allow_theme_switch", true),
 	}
 }
 
@@ -277,15 +328,8 @@ func (s *ConfigService) UpdateConfig(key, value string, isFrontendTab bool) erro
 	}
 
 	value = strings.TrimSpace(value)
-	switch target.ValueType {
-	case "int":
-		if _, err := strconv.Atoi(value); err != nil {
-			return common.NewAPIError(http.StatusBadRequest, common.ErrConfigValidationFailed)
-		}
-	case "boolean":
-		if value != "true" && value != "false" {
-			return common.NewAPIError(http.StatusBadRequest, common.ErrConfigValidationFailed)
-		}
+	if err := validateConfigFieldValue(key, value, *target); err != nil {
+		return err
 	}
 
 	if key == "allow_registration" && value == "true" {
@@ -350,15 +394,8 @@ func (s *ConfigService) UpdateBatchConfigs(configs map[string]any, isFrontendTab
 		if spec.IsSecret && val == "********" {
 			continue
 		}
-		switch spec.ValueType {
-		case "int":
-			if _, err := strconv.Atoi(val); err != nil {
-				return common.NewAPIError(http.StatusBadRequest, common.ErrConfigValidationFailed)
-			}
-		case "boolean":
-			if val != "true" && val != "false" {
-				return common.NewAPIError(http.StatusBadRequest, common.ErrConfigValidationFailed)
-			}
+		if err := validateConfigFieldValue(key, val, spec); err != nil {
+			return err
 		}
 		if key == "allow_registration" && val == "true" && effectiveSMTP != "true" {
 			return common.NewAPIError(http.StatusBadRequest, common.ErrRegistrationSMTPRequired)
@@ -471,6 +508,40 @@ func (s *ConfigService) TestSMTP(input SMTPTestInput) error {
 	return nil
 }
 
+func validateConfigFieldValue(key, value string, spec config.SystemFieldSpec) error {
+	switch spec.ValueType {
+	case "int":
+		n, err := strconv.Atoi(value)
+		if err != nil {
+			return common.NewAPIError(http.StatusBadRequest, common.ErrConfigValidationFailed)
+		}
+		if key == "classification_max_input_chars" && n < 0 {
+			return common.NewAPIError(http.StatusBadRequest, common.ErrConfigValidationFailed)
+		}
+		if key == "classification_confidence" && (n < 1 || n > 100) {
+			return common.NewAPIError(http.StatusBadRequest, common.ErrConfigValidationFailed)
+		}
+	case "boolean":
+		if value != "true" && value != "false" {
+			return common.NewAPIError(http.StatusBadRequest, common.ErrConfigValidationFailed)
+		}
+	case "select":
+		if len(spec.Options) > 0 {
+			valid := false
+			for _, opt := range spec.Options {
+				if opt.Value == value {
+					valid = true
+					break
+				}
+			}
+			if !valid {
+				return common.NewAPIError(http.StatusBadRequest, common.ErrConfigValidationFailed)
+			}
+		}
+	}
+	return nil
+}
+
 func stringifyConfigScalar(v any) string {
 	if v == nil {
 		return ""
@@ -499,14 +570,28 @@ func stringifyConfigScalar(v any) string {
 
 func (s *ConfigService) GetClassificationSlot() classification.SlotStatus {
 	groups, tags := s.scraperRepo.CountClassificationSlot()
-	provider := "slot"
-	if s.classifier != nil {
-		provider = s.classifier.Provider()
+	provider, _ := s.cfgRepo.Get("classification_provider")
+	if strings.TrimSpace(provider) == "" {
+		if s.classifier != nil {
+			provider = s.classifier.Provider()
+		} else {
+			provider = "none"
+		}
+	}
+	workerState := "idle"
+	var pendingTasks int64
+	if s.clsSvc != nil {
+		workerState, _ = s.clsSvc.WorkerState()
+		if qStatus, err := s.clsSvc.GetQueueStatus(); err == nil {
+			pendingTasks = qStatus.Stats.Pending + qStatus.Stats.Running
+		}
 	}
 	return classification.SlotStatus{
 		Provider:      provider,
 		SlotReady:     true,
 		TagGroupCount: groups,
 		TagCount:      tags,
+		WorkerState:   workerState,
+		PendingTasks:  pendingTasks,
 	}
 }

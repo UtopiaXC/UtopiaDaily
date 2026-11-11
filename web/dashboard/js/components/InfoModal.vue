@@ -1,11 +1,11 @@
 <template>
     <transition name="modal">
-        <div v-if="show" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm p-4">
-            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl p-6 w-96 max-w-full border border-gray-200 dark:border-gray-700">
-                <h3 class="text-lg font-bold mb-3 text-gray-800 dark:text-white">{{ title }}</h3>
-                <div class="text-sm text-gray-600 dark:text-gray-300 mb-6 break-all whitespace-pre-wrap bg-gray-50 dark:bg-gray-900/50 p-3 rounded-lg border border-gray-200 dark:border-gray-700 max-h-64 overflow-y-auto">{{ message }}</div>
+        <div v-if="show" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4">
+            <div class="bg-white dark:bg-slate-900 rounded-lg p-5 w-[440px] max-w-full border border-slate-200 dark:border-slate-800">
+                <h3 class="text-base font-semibold mb-3 text-slate-900 dark:text-white">{{ title }}</h3>
+                <div class="text-xs font-mono text-slate-700 dark:text-slate-300 mb-5 break-all whitespace-pre-wrap bg-slate-50 dark:bg-slate-950 p-3 rounded-md border border-slate-200 dark:border-slate-800 max-h-72 overflow-y-auto">{{ message }}</div>
                 <div class="flex justify-end">
-                    <button @click="$emit('close')" class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition">
+                    <button @click="$emit('close')" class="ui-btn-primary">
                         {{ t('common.close') }}
                     </button>
                 </div>
@@ -23,5 +23,5 @@ export default {
         t: Function
     },
     emits: ['close']
-}
+};
 </script>

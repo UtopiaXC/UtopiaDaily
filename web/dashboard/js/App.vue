@@ -1,10 +1,10 @@
 <template>
     <div class="font-sans antialiased text-gray-800 dark:text-gray-100">
         <ToastContainer ref="toast" />
-        <div v-if="isInitializing" class="fixed inset-0 flex items-center justify-center bg-gray-100 dark:bg-gray-900 z-50">
+        <div v-if="isInitializing" class="fixed inset-0 flex items-center justify-center bg-slate-50 dark:bg-slate-950 z-50">
             <div class="flex flex-col items-center">
-                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-                <p class="mt-4 text-gray-500 dark:text-gray-400 text-sm">{{ t('common.loading') }}</p>
+                <div class="animate-spin rounded-full h-10 w-10 border-2 border-slate-200 dark:border-slate-800 border-t-slate-900 dark:border-t-blue-500"></div>
+                <p class="mt-3 text-slate-500 dark:text-slate-400 text-xs font-medium tracking-wide uppercase">{{ t('common.loading') }}</p>
             </div>
         </div>
 
@@ -68,7 +68,7 @@ export default {
             serverName: 'Utopia Daily',
             systemInfo: {
                 name: 'Utopia Daily',
-                version: '2.0.0',
+                version: __APP_VERSION__,
                 default_locale: 'en_US',
                 allow_registration: false,
                 setup_required: false
@@ -270,6 +270,16 @@ export default {
             saveAuthState(auth, rememberMe);
             this.user = auth.user;
             this.hasSession = true;
+            try {
+                const params = new URLSearchParams(window.location.search);
+                const redirect = (params.get('redirect') || '').trim();
+                if (redirect && redirect.startsWith('/') && !redirect.startsWith('//') && !redirect.startsWith('/dashboard')) {
+                    window.location.assign(redirect);
+                    return;
+                }
+            } catch {
+                // ignore malformed URL
+            }
             await this.fetchMenu();
         },
         handleUserUpdated(updated) {

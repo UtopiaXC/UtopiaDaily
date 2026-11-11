@@ -1,0 +1,112 @@
+[
+  {
+    "group": "config.ai.model.group.balanced",
+    "models": [
+      {
+        "name": "MiniLM-L12 Multilingual",
+        "hf_repo": "Xenova/paraphrase-multilingual-MiniLM-L12-v2",
+        "size_about": "118MB",
+        "desc": "config.ai.model.desc.minilm_l12_multilingual"
+      },
+      {
+        "name": "E5-Small Multilingual",
+        "hf_repo": "Xenova/multilingual-e5-small",
+        "size_about": "118MB",
+        "desc": "config.ai.model.desc.e5_small_multilingual"
+      },
+      {
+        "name": "LaBSE",
+        "hf_repo": "Xenova/LaBSE",
+        "size_about": "472MB",
+        "desc": "config.ai.model.desc.labse"
+      }
+    ]
+  },
+  {
+    "group": "config.ai.model.group.chinese_optimized",
+    "models": [
+      {
+        "name": "BGE-Small ZH v1.5",
+        "hf_repo": "Xenova/bge-small-zh-v1.5",
+        "size_about": "24MB",
+        "desc": "config.ai.model.desc.bge_small_zh_v1_5"
+      },
+      {
+        "name": "Text2Vec Base Sentence",
+        "hf_repo": "Xenova/text2vec-base-chinese-sentence",
+        "size_about": "119MB",
+        "desc": "config.ai.model.desc.text2vec_base_sentence"
+      }
+    ]
+  },
+  {
+    "group": "config.ai.model.group.english_spanish_optimized",
+    "models": [
+      {
+        "name": "MiniLM-L6 v2",
+        "hf_repo": "Xenova/all-MiniLM-L6-v2",
+        "size_about": "23MB",
+        "desc": "config.ai.model.desc.minilm_l6_v2"
+      },
+      {
+        "name": "MPNet Base v2",
+        "hf_repo": "Xenova/all-mpnet-base-v2",
+        "size_about": "110MB",
+        "desc": "config.ai.model.desc.mpnet_base_v2"
+      },
+      {
+        "name": "Snowflake Arctic XS",
+        "hf_repo": "Snowflake/snowflake-arctic-embed-xs",
+        "size_about": "23MB",
+        "desc": "config.ai.model.desc.snowflake_arctic_xs"
+      }
+    ]
+  },
+  {
+    "group": "config.ai.model.group.low_pressure",
+    "models": [
+      {
+        "name": "MiniLM-L3 v2",
+        "hf_repo": "Xenova/paraphrase-MiniLM-L3-v2",
+        "size_about": "17.5MB",
+        "desc": "config.ai.model.desc.minilm_l3_v2"
+      },
+      {
+        "name": "DistilRoberta v1",
+        "hf_repo": "Xenova/all-distilroberta-v1",
+        "size_about": "82MB",
+        "desc": "config.ai.model.desc.distilroberta_v1"
+      }
+    ]
+  },
+  {
+    "group": "config.ai.model.group.others",
+    "models": [
+      {
+        "name": "Jina v2 Base ZH",
+        "hf_repo": "Xenova/jina-embeddings-v2-base-zh",
+        "size_about": "162MB",
+        "desc": "config.ai.model.desc.jina_v2_base_zh"
+      },
+      {
+        "name": "CLIP ViT-B/32",
+        "hf_repo": "Xenova/clip-vit-base-patch32",
+        "size_about": "89MB",
+        "desc": "config.ai.model.desc.clip_vit_b_32"
+      },
+      {
+        "name": "BGE-M3",
+        "hf_repo": "Xenova/bge-m3",
+        "size_about": "570MB",
+        "desc": "config.ai.model.desc.bge_m3"
+      },
+      {
+        "name": "German BERT",
+        "hf_repo": "Xenova/bert-base-german-cased",
+        "size_about": "180MB",
+        "desc": "config.ai.model.desc.german_bert"
+      }
+    ]
+  }
+]
+

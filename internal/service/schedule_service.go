@@ -101,6 +101,12 @@ func (s *ScheduleService) ListJobs() ([]ScheduleJobDTO, error) {
 	return out, nil
 }
 
+type ScheduleBatchUpdateItem struct {
+	ID       uint   `json:"id"`
+	CronExpr string `json:"cron_expr"`
+	Enabled  bool   `json:"enabled"`
+}
+
 func (s *ScheduleService) UpdateJob(id uint, cronExpr string, enabled bool) error {
 	if _, err := s.modRepo.GetScheduleJob(id); err != nil {
 		return common.NewAPIError(http.StatusNotFound, common.ErrScheduleTaskNotFound)
@@ -110,6 +116,26 @@ func (s *ScheduleService) UpdateJob(id uint, cronExpr string, enabled bool) erro
 	}
 	if err := s.modRepo.UpdateScheduleJob(id, cronExpr, enabled); err != nil {
 		return common.NewAPIError(http.StatusInternalServerError, common.ErrDatabaseError)
+	}
+	if s.onReload != nil {
+		s.onReload()
+	}
+	return nil
+}
+
+func (s *ScheduleService) BatchUpdateJobs(items []ScheduleBatchUpdateItem) error {
+	for _, it := range items {
+		if _, err := s.modRepo.GetScheduleJob(it.ID); err != nil {
+			return common.NewAPIError(http.StatusNotFound, common.ErrScheduleTaskNotFound)
+		}
+		if err := scheduler.ValidateCron(it.CronExpr); err != nil {
+			return common.NewAPIError(http.StatusBadRequest, common.ErrScheduleCronInvalid)
+		}
+	}
+	for _, it := range items {
+		if err := s.modRepo.UpdateScheduleJob(it.ID, it.CronExpr, it.Enabled); err != nil {
+			return common.NewAPIError(http.StatusInternalServerError, common.ErrDatabaseError)
+		}
 	}
 	if s.onReload != nil {
 		s.onReload()

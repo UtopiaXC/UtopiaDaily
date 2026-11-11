@@ -20,7 +20,7 @@ func (s *SMTPPushModule) Meta() module.Metadata {
 		ID:      "smtp_pusher",
 		Kind:    module.KindPush,
 		Source:  module.SourceBuiltIn,
-		Version: "1.0.0",
+		Version: module.DefaultVersion,
 		Author:  "UtopiaXC",
 	}
 }

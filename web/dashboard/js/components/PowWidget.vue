@@ -3,37 +3,37 @@
         <div
             @click="state === 'idle' || state === 'error' ? verify() : null"
             :class="[
-                'flex items-center justify-between px-3 py-2.5 rounded-md border text-sm transition select-none',
+                'flex items-center justify-between px-3 py-2 rounded-md border text-xs font-medium transition select-none',
                 state === 'verified'
-                    ? 'bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-700 text-green-700 dark:text-green-300'
+                    ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300'
                     : state === 'error'
-                        ? 'bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-700 text-red-700 dark:text-red-300 cursor-pointer'
-                        : 'bg-gray-50 dark:bg-gray-700/60 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 cursor-pointer hover:border-blue-500'
+                        ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800 text-rose-700 dark:text-rose-300 cursor-pointer'
+                        : 'bg-slate-50 dark:bg-slate-950 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 cursor-pointer hover:border-blue-500'
             ]"
         >
-            <div class="flex items-center gap-2.5">
+            <div class="flex items-center gap-2">
                 <span
-                    class="material-icons text-lg"
+                    class="material-icons text-[16px]"
                     :class="[
                         state === 'solving' ? 'animate-spin text-blue-500' : '',
-                        state === 'verified' ? 'text-green-600 dark:text-green-400' : '',
-                        state === 'error' ? 'text-red-500' : '',
-                        state === 'idle' ? 'text-gray-500 dark:text-gray-400' : ''
+                        state === 'verified' ? 'text-emerald-600 dark:text-emerald-400' : '',
+                        state === 'error' ? 'text-rose-500' : '',
+                        state === 'idle' ? 'text-slate-400' : ''
                     ]"
                 >
                     {{ iconName }}
                 </span>
-                <span class="font-medium">{{ statusLabel }}</span>
+                <span>{{ statusLabel }}</span>
             </div>
 
             <button
                 v-if="state === 'verified' || state === 'error'"
                 type="button"
                 @click.stop="resetAndVerify"
-                class="p-1 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 rounded transition"
+                class="p-0.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded transition"
                 :title="t('common.refresh')"
             >
-                <span class="material-icons text-base">refresh</span>
+                <span class="material-icons text-[15px]">refresh</span>
             </button>
         </div>
     </div>
@@ -120,5 +120,5 @@ export default {
             }
         }
     }
-}
+};
 </script>

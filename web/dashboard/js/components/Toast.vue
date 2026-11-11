@@ -1,10 +1,22 @@
 <template>
     <div class="fixed bottom-4 right-4 z-[70] flex flex-col gap-2">
         <transition-group name="toast">
-            <div v-for="toast in toasts" :key="toast.id"
-                 :class="['px-4 py-3 rounded-lg shadow-lg text-white text-sm flex items-center min-w-[220px] max-w-sm',
-                          toast.type === 'success' ? 'bg-green-600' : 'bg-red-600']">
-                <span class="material-icons text-sm mr-2">{{ toast.type === 'success' ? 'check_circle' : 'error' }}</span>
+            <div
+                v-for="toast in toasts"
+                :key="toast.id"
+                :class="[
+                    'px-3.5 py-2.5 rounded-md text-xs font-medium flex items-center min-w-[220px] max-w-sm border',
+                    toast.type === 'success'
+                        ? 'bg-slate-900 text-white border-slate-800 dark:bg-slate-800 dark:border-slate-700'
+                        : 'bg-rose-600 text-white border-rose-700'
+                ]"
+            >
+                <span
+                    class="material-icons text-[16px] mr-2"
+                    :class="toast.type === 'success' ? 'text-emerald-400' : 'text-white'"
+                >
+                    {{ toast.type === 'success' ? 'check_circle' : 'error_outline' }}
+                </span>
                 <span class="break-words">{{ toast.message }}</span>
             </div>
         </transition-group>
@@ -17,7 +29,7 @@ export default {
         return {
             toasts: [],
             counter: 0
-        }
+        };
     },
     methods: {
         add(message, type = 'success') {
@@ -34,5 +46,5 @@ export default {
             }
         }
     }
-}
+};
 </script>

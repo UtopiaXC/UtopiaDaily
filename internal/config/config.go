@@ -13,7 +13,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-var Version = "2.0.0"
+var Version = "0.2.0"
 
 type Config struct {
 	Site     SiteConfig     `yaml:"site"`
@@ -194,7 +194,10 @@ func EnsureDirectories(cfg *Config) {
 		"data/db",
 		"cache",
 		"cache/locales",
+		"cache/onnx_runtime",
 		"logs",
+		"models",
+		"models/onnx",
 		"plugins",
 		"plugins/scrapers",
 		"plugins/push",
@@ -206,7 +209,11 @@ func EnsureDirectories(cfg *Config) {
 			}
 		}
 		if cfg.Storage.CacheDir != "" {
-			dirs = append(dirs, cfg.Storage.CacheDir, filepath.Join(cfg.Storage.CacheDir, "locales"))
+			dirs = append(dirs,
+				cfg.Storage.CacheDir,
+				filepath.Join(cfg.Storage.CacheDir, "locales"),
+				filepath.Join(cfg.Storage.CacheDir, "onnx_runtime"),
+			)
 		}
 		if cfg.Storage.PluginsDir != "" {
 			dirs = append(dirs,

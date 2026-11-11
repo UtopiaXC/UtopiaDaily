@@ -63,6 +63,15 @@ const (
 	ErrSubscriptionNotFound   = "SUBSCRIPTION_NOT_FOUND"
 	ErrPushDeliveryFailed     = "PUSH_DELIVERY_FAILED"
 
+	ErrNewspaperForbidden            = "NEWSPAPER_FORBIDDEN"
+	ErrClassificationFailed          = "CLASSIFICATION_FAILED"
+	ErrClassificationProfileNotFound = "CLASSIFICATION_PROFILE_NOT_FOUND"
+	ErrClassificationQueueBusy       = "CLASSIFICATION_QUEUE_BUSY"
+	ErrModelDownloadFailed           = "MODEL_DOWNLOAD_FAILED"
+	ErrONNXEnvFailed                 = "ONNX_ENV_FAILED"
+	ErrOllamaRequestFailed           = "OLLAMA_REQUEST_FAILED"
+	ErrBilibiliQRFailed              = "BILIBILI_QR_FAILED"
+
 	ErrValidationFailed    = "VALIDATION_FAILED"
 	ErrRecordNotFound      = "RECORD_NOT_FOUND"
 	ErrDuplicateEntry      = "DUPLICATE_ENTRY"

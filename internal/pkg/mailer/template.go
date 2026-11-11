@@ -128,8 +128,10 @@ func RenderNewsDigestEmail(siteName, digestTitle string, articles []DigestArticl
 	tb.WriteString(digestTitle + "\r\n\r\n")
 
 	for _, item := range articles {
-		escTitle := html.EscapeString(item.Title)
-		escSummary := html.EscapeString(item.Summary)
+		cleanTitle := stripMarkdownPlain(item.Title)
+		cleanSummary := stripMarkdownPlain(item.Summary)
+		escTitle := html.EscapeString(cleanTitle)
+		escSummary := html.EscapeString(cleanSummary)
 		escSource := html.EscapeString(item.SourceName)
 		escDate := html.EscapeString(item.PublishedAt)
 
@@ -152,12 +154,12 @@ func RenderNewsDigestEmail(siteName, digestTitle string, articles []DigestArticl
 		}
 		sb.WriteString(`</div>`)
 
-		tb.WriteString(fmt.Sprintf("- %s [%s]\r\n", item.Title, item.SourceName))
+		tb.WriteString(fmt.Sprintf("- %s [%s]\r\n", cleanTitle, item.SourceName))
 		if item.ExternalURL != "" {
 			tb.WriteString(fmt.Sprintf("  %s\r\n", item.ExternalURL))
 		}
-		if item.Summary != "" {
-			tb.WriteString(fmt.Sprintf("  %s\r\n", item.Summary))
+		if cleanSummary != "" {
+			tb.WriteString(fmt.Sprintf("  %s\r\n", cleanSummary))
 		}
 		tb.WriteString("\r\n")
 	}
@@ -165,4 +167,100 @@ func RenderNewsDigestEmail(siteName, digestTitle string, articles []DigestArticl
 	htmlBody = BuildEmailHTML(siteName, digestTitle, "", sb.String(), "", "", "")
 	textBody = tb.String()
 	return
+}
+
+func stripMarkdownPlain(md string) string {
+	s := strings.TrimSpace(md)
+	if s == "" {
+		return ""
+	}
+	for iter := 0; iter < 4; iter++ {
+		next := stripMarkdownLinks(s)
+		if next == s {
+			break
+		}
+		s = next
+	}
+	s = strings.ReplaceAll(s, "```", "")
+	s = strings.ReplaceAll(s, "**", "")
+	s = strings.ReplaceAll(s, "~~", "")
+	s = strings.ReplaceAll(s, "`", "")
+	return strings.TrimSpace(s)
+}
+
+func stripMarkdownLinks(s string) string {
+	var out strings.Builder
+	out.Grow(len(s))
+	i := 0
+	for i < len(s) {
+		isImg := false
+		bracketStart := -1
+		if i+1 < len(s) && s[i] == '!' && s[i+1] == '[' {
+			isImg = true
+			bracketStart = i + 1
+		} else if s[i] == '[' {
+			bracketStart = i
+		}
+		if bracketStart >= 0 {
+			depth := 1
+			j := bracketStart + 1
+			closed := false
+			for j < len(s) {
+				if s[j] == '\\' && j+1 < len(s) {
+					j += 2
+					continue
+				}
+				if s[j] == '\n' {
+					break
+				}
+				if s[j] == '[' {
+					depth++
+				} else if s[j] == ']' {
+					depth--
+					if depth == 0 {
+						closed = true
+						break
+					}
+				}
+				j++
+			}
+			if closed && j+1 < len(s) && s[j+1] == '(' {
+				pDepth := 1
+				k := j + 2
+				parenClosed := false
+				for k < len(s) {
+					if s[k] == '\\' && k+1 < len(s) {
+						k += 2
+						continue
+					}
+					if s[k] == '\n' {
+						break
+					}
+					if s[k] == '(' {
+						pDepth++
+					} else if s[k] == ')' {
+						pDepth--
+						if pDepth == 0 {
+							parenClosed = true
+							break
+						}
+					}
+					k++
+				}
+				if parenClosed {
+					label := s[bracketStart+1 : j]
+					if !isImg {
+						out.WriteString(label)
+					} else if alt := strings.TrimSpace(label); alt != "" {
+						out.WriteString(alt)
+					}
+					i = k + 1
+					continue
+				}
+			}
+		}
+		out.WriteByte(s[i])
+		i++
+	}
+	return out.String()
 }

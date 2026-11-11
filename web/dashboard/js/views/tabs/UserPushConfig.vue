@@ -1,34 +1,31 @@
 <template>
-    <div class="bg-white dark:bg-gray-800 shadow-sm rounded-xl border border-gray-200 dark:border-gray-700 flex flex-col h-full">
-        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 rounded-t-xl flex justify-between items-center">
+    <div class="ui-surface flex flex-col h-full">
+        <div class="ui-surface-header flex justify-between items-center">
             <div>
-                <h3 class="text-lg font-bold text-gray-800 dark:text-white">{{ t('user_push.title') }}</h3>
-                <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{{ t('user_push.subtitle') }}</p>
+                <h3 class="text-base font-semibold text-slate-900 dark:text-white tracking-tight">{{ t('user_push.title') }}</h3>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{{ t('user_push.subtitle') }}</p>
             </div>
-            <button
-                @click="fetchData"
-                class="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 text-sm flex items-center transition-colors bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 px-3 py-1.5 rounded-md shadow-sm hover:shadow"
-            >
-                <span class="material-icons text-sm mr-1" :class="{'animate-spin': loading}">refresh</span>
-                {{ t('common.refresh') }}
+            <button @click="fetchData" class="ui-btn-secondary">
+                <span class="material-icons text-[16px]" :class="{ 'animate-spin': loading }">refresh</span>
+                <span>{{ t('common.refresh') }}</span>
             </button>
         </div>
 
-        <div v-if="loading" class="p-12 text-center text-gray-500 dark:text-gray-400 flex-1">
-            <span class="material-icons animate-spin text-3xl mb-2 text-blue-500">sync</span>
-            <p class="text-sm">{{ t('common.loading') }}</p>
+        <div v-if="loading" class="p-12 text-center text-slate-500 dark:text-slate-400 flex-1">
+            <span class="material-icons animate-spin text-2xl mb-2 text-blue-600">sync</span>
+            <p class="text-xs">{{ t('common.loading') }}</p>
         </div>
 
-        <div v-else class="p-6 flex-1 overflow-y-auto space-y-6">
-            <div v-if="enabledPushModules.length === 0" class="p-4 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-200 text-sm flex items-center gap-2">
-                <span class="material-icons text-amber-500">warning</span>
+        <div v-else class="p-5 flex-1 overflow-y-auto space-y-5">
+            <div v-if="enabledPushModules.length === 0" class="p-4 rounded-md border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300 text-xs flex items-center gap-2">
+                <span class="material-icons text-[18px]">warning</span>
                 <span>{{ t('user_push.no_modules') }}</span>
             </div>
 
             <form v-else @submit.prevent="saveSubscription" class="max-w-2xl space-y-5">
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-1.5">{{ t('user_push.channel') }}</label>
+                        <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{{ t('user_push.channel') }}</label>
                         <CustomSelect
                             v-model="form.push_module_id"
                             @update:model-value="onChannelChange"
@@ -41,19 +38,19 @@
                             <input
                                 type="checkbox"
                                 v-model="form.enabled"
-                                class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 h-4 w-4"
+                                class="rounded border-slate-300 dark:border-slate-600 text-blue-600 focus:ring-blue-500 h-4 w-4"
                             >
-                            <span class="text-sm font-medium text-gray-800 dark:text-gray-200">{{ t('common.enable') }}</span>
+                            <span class="text-sm font-medium text-slate-800 dark:text-slate-200">{{ t('common.enable') }}</span>
                         </label>
                     </div>
                 </div>
 
                 <div>
                     <div class="flex items-center gap-1.5 mb-1.5">
-                        <label class="text-sm font-semibold text-gray-700 dark:text-gray-200">{{ t('user_push.target') }}</label>
+                        <label class="text-xs font-semibold text-slate-700 dark:text-slate-300">{{ t('user_push.target') }}</label>
                         <div class="relative group flex items-center">
-                            <span class="material-icons text-gray-400 text-sm cursor-help hover:text-blue-500">help_outline</span>
-                            <div class="absolute left-full ml-2 top-1/2 -translate-y-1/2 w-60 p-2.5 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20">
+                            <span class="material-icons text-slate-400 text-[15px] cursor-help hover:text-blue-500">help_outline</span>
+                            <div class="absolute left-full ml-2 top-1/2 -translate-y-1/2 w-60 p-2.5 bg-slate-900 text-white text-xs rounded-md border border-slate-700 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20">
                                 {{ t('user_push.target_hint') }}
                             </div>
                         </div>
@@ -62,122 +59,93 @@
                         v-model="form.target"
                         type="text"
                         :placeholder="currentUser?.email || ''"
-                        class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        class="ui-input"
                     >
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <div class="flex items-center gap-1.5 mb-1.5">
-                            <label class="text-sm font-semibold text-gray-700 dark:text-gray-200">{{ t('user_push.cron') }}</label>
+                            <label class="text-xs font-semibold text-slate-700 dark:text-slate-300">{{ t('user_push.cron') }}</label>
                             <div class="relative group flex items-center">
-                                <span class="material-icons text-gray-400 text-sm cursor-help hover:text-blue-500">help_outline</span>
-                                <div class="absolute left-full ml-2 top-1/2 -translate-y-1/2 w-52 p-2.5 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20">
+                                <span class="material-icons text-slate-400 text-[15px] cursor-help hover:text-blue-500">help_outline</span>
+                                <div class="absolute left-full ml-2 top-1/2 -translate-y-1/2 w-52 p-2.5 bg-slate-900 text-white text-xs rounded-md border border-slate-700 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20">
                                     {{ t('schedule.cron_hint') }}
                                 </div>
                             </div>
                         </div>
-                        <input
-                            v-model="form.cron_expr"
-                            type="text"
-                            class="w-full font-mono border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        >
+                        <input v-model="form.cron_expr" type="text" class="ui-input font-mono text-xs">
                     </div>
 
                     <div>
-                        <label class="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-1.5">{{ t('user_push.digest_title') }}</label>
-                        <input
-                            v-model="form.digest_title"
-                            type="text"
-                            class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        >
+                        <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{{ t('user_push.digest_title') }}</label>
+                        <input v-model="form.digest_title" type="text" class="ui-input">
                     </div>
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-1.5">{{ t('user_push.max_items') }}</label>
-                        <input
-                            v-model.number="form.max_items"
-                            type="number"
-                            min="1"
-                            max="200"
-                            class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        >
+                        <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{{ t('user_push.max_items') }}</label>
+                        <input v-model.number="form.max_items" type="number" min="1" max="200" class="ui-input">
                     </div>
 
                     <div>
-                        <label class="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-1.5">{{ t('user_push.lookback_hours') }}</label>
-                        <input
-                            v-model.number="form.lookback_hours"
-                            type="number"
-                            min="1"
-                            max="720"
-                            class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        >
+                        <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{{ t('user_push.lookback_hours') }}</label>
+                        <input v-model.number="form.lookback_hours" type="number" min="1" max="720" class="ui-input">
                     </div>
                 </div>
 
                 <div>
                     <div class="flex items-center gap-1.5 mb-2">
-                        <label class="text-sm font-semibold text-gray-700 dark:text-gray-200">{{ t('user_push.sources') }}</label>
+                        <label class="text-xs font-semibold text-slate-700 dark:text-slate-300">{{ t('user_push.sources') }}</label>
                         <div class="relative group flex items-center">
-                            <span class="material-icons text-gray-400 text-sm cursor-help hover:text-blue-500">help_outline</span>
-                            <div class="absolute left-full ml-2 top-1/2 -translate-y-1/2 w-60 p-2.5 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20">
+                            <span class="material-icons text-slate-400 text-[15px] cursor-help hover:text-blue-500">help_outline</span>
+                            <div class="absolute left-full ml-2 top-1/2 -translate-y-1/2 w-60 p-2.5 bg-slate-900 text-white text-xs rounded-md border border-slate-700 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20">
                                 {{ t('user_push.sources_hint') }}
                             </div>
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/60 dark:bg-gray-900/30">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 p-4 rounded-md border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/40">
                         <label
                             v-for="mod in scraperModules"
                             :key="mod.module_id"
-                            class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer"
+                            class="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300 cursor-pointer"
                         >
                             <input
                                 type="checkbox"
                                 :value="mod.module_id"
                                 v-model="form.source_ids"
-                                class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                class="rounded border-slate-300 dark:border-slate-600 text-blue-600 focus:ring-blue-500"
                             >
                             <span>{{ t(mod.name, mod.module_id) }}</span>
                         </label>
                     </div>
                 </div>
 
-                <div class="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                <div class="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
                     <div class="flex gap-2">
-                        <button
-                            type="button"
-                            @click="sendTest"
-                            :disabled="testing"
-                            class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium flex items-center gap-1.5 transition-colors disabled:opacity-50"
-                        >
-                            <span class="material-icons text-sm" :class="{'animate-spin': testing}">
+                        <button type="button" @click="sendTest" :disabled="testing" class="ui-btn-emerald">
+                            <span class="material-icons text-[16px]" :class="{ 'animate-spin': testing }">
                                 {{ testing ? 'sync' : 'send' }}
                             </span>
-                            {{ testing ? t('common.testing') : t('user_push.test_send') }}
+                            <span>{{ testing ? t('common.testing') : t('user_push.test_send') }}</span>
                         </button>
                         <button
                             v-if="form.id > 0"
                             type="button"
                             @click="confirmDelete"
-                            class="px-4 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg text-sm font-medium transition-colors"
+                            class="ui-btn-secondary text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-900/60"
                         >
                             {{ t('common.delete') }}
                         </button>
                     </div>
 
-                    <button
-                        type="submit"
-                        :disabled="saving"
-                        class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium flex items-center gap-1.5 transition-colors shadow-sm disabled:opacity-50"
-                    >
-                        <span class="material-icons text-sm" :class="{'animate-spin': saving}">
+                    <button type="submit" :disabled="saving" class="ui-btn-primary">
+                        <span class="material-icons text-[16px]" :class="{ 'animate-spin': saving }">
                             {{ saving ? 'sync' : 'save' }}
                         </span>
-                        {{ saving ? t('common.saving') : t('common.save') }}
+                        <span>{{ saving ? t('common.saving') : t('common.save') }}</span>
                     </button>
                 </div>
             </form>

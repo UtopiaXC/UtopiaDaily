@@ -35,7 +35,7 @@ func (t *TelegramChannelScraper) Meta() module.Metadata {
 		ID:      "telegram_channel",
 		Kind:    module.KindScraper,
 		Source:  module.SourceBuiltIn,
-		Version: "2.0.0",
+		Version: module.DefaultVersion,
 		Author:  "UtopiaXC",
 	}
 }
@@ -131,7 +131,7 @@ func (t *TelegramChannelScraper) TestConfig(ctx context.Context, cfg module.Conf
 	if err != nil {
 		return module.TestResult{Success: false, MessageKey: "module.test.failed", Detail: err.Error()}
 	}
-	req.Header.Set("User-Agent", "Mozilla/5.0 (compatible; UtopiaDaily/2.0)")
+	req.Header.Set("User-Agent", "Mozilla/5.0 (compatible; UtopiaDaily/"+module.DefaultVersion+")")
 	resp, err := t.client.Do(req)
 	if err != nil {
 		return module.TestResult{Success: false, MessageKey: "module.test.failed", Detail: err.Error()}
@@ -297,7 +297,8 @@ func extractTelegramHandle(raw string) string {
 }
 
 func buildTelegramTitle(content, channelName string, localTime time.Time) string {
-	for _, line := range strings.Split(content, "\n") {
+	plain := stripMarkdownForPlainText(content)
+	for _, line := range strings.Split(plain, "\n") {
 		cleaned := strings.TrimSpace(line)
 		cleaned = strings.TrimLeft(cleaned, "#*>- ")
 		if cleaned != "" {
@@ -312,12 +313,218 @@ func buildTelegramTitle(content, channelName string, localTime time.Time) string
 }
 
 func buildSummary(content string) string {
-	flat := strings.Join(strings.Fields(content), " ")
+	plain := stripMarkdownForPlainText(content)
+	flat := strings.Join(strings.Fields(plain), " ")
 	runes := []rune(flat)
 	if len(runes) > 200 {
 		return string(runes[:200]) + "..."
 	}
 	return flat
+}
+
+func stripMarkdownForPlainText(md string) string {
+	if strings.TrimSpace(md) == "" {
+		return ""
+	}
+	s := strings.ReplaceAll(md, "\r\n", "\n")
+	s = strings.ReplaceAll(s, "\r", "\n")
+
+	// Strip inline links and images repeatedly so nested formatting like [**label**](url) cleanly resolves.
+	for iter := 0; iter < 4; iter++ {
+		next := replaceMarkdownLinks(s)
+		if next == s {
+			break
+		}
+		s = next
+	}
+
+	lines := strings.Split(s, "\n")
+	cleanedLines := make([]string, 0, len(lines))
+	inFence := false
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "```") || strings.HasPrefix(trimmed, "~~~") {
+			inFence = !inFence
+			continue
+		}
+		if inFence {
+			cleanedLines = append(cleanedLines, line)
+			continue
+		}
+		cleanedLines = append(cleanedLines, stripInlineAndLinePrefixMarkdown(line))
+	}
+	return strings.Join(cleanedLines, "\n")
+}
+
+func stripInlineAndLinePrefixMarkdown(line string) string {
+	s := strings.TrimLeft(line, " \t")
+	for strings.HasPrefix(s, ">") {
+		s = strings.TrimLeft(s[1:], " \t")
+	}
+	// Strip ATX heading markers (# Title) only when followed by whitespace.
+	hashCount := 0
+	for hashCount < len(s) && hashCount < 6 && s[hashCount] == '#' {
+		hashCount++
+	}
+	if hashCount > 0 && hashCount < len(s) && (s[hashCount] == ' ' || s[hashCount] == '\t') {
+		s = strings.TrimLeft(s[hashCount+1:], " \t")
+	}
+	// Strip unordered list prefixes (- item, * item, + item) when followed by space.
+	if len(s) >= 2 && (s[0] == '-' || s[0] == '*' || s[0] == '+') && (s[1] == ' ' || s[1] == '\t') {
+		s = strings.TrimLeft(s[2:], " \t")
+	}
+
+	// Strip paired symmetric inline markers.
+	s = stripPairedMarker(s, "`", false)
+	s = stripPairedMarker(s, "***", false)
+	s = stripPairedMarker(s, "**", false)
+	s = stripPairedMarker(s, "~~", false)
+	s = stripPairedMarker(s, "||", false)
+	s = stripPairedMarker(s, "___", true)
+	s = stripPairedMarker(s, "__", true)
+	s = stripPairedSingleAsterisk(s)
+	return s
+}
+
+func replaceMarkdownLinks(s string) string {
+	var out strings.Builder
+	out.Grow(len(s))
+	i := 0
+	for i < len(s) {
+		isImg := false
+		bracketStart := -1
+		if i+1 < len(s) && s[i] == '!' && s[i+1] == '[' {
+			isImg = true
+			bracketStart = i + 1
+		} else if s[i] == '[' {
+			bracketStart = i
+		}
+		if bracketStart >= 0 {
+			depth := 1
+			j := bracketStart + 1
+			bracketClosed := false
+			for j < len(s) {
+				if s[j] == '\\' && j+1 < len(s) {
+					j += 2
+					continue
+				}
+				if s[j] == '\n' {
+					break
+				}
+				if s[j] == '[' {
+					depth++
+				} else if s[j] == ']' {
+					depth--
+					if depth == 0 {
+						bracketClosed = true
+						break
+					}
+				}
+				j++
+			}
+			if bracketClosed && j+1 < len(s) && s[j+1] == '(' {
+				pDepth := 1
+				k := j + 2
+				parenClosed := false
+				for k < len(s) {
+					if s[k] == '\\' && k+1 < len(s) {
+						k += 2
+						continue
+					}
+					if s[k] == '\n' {
+						break
+					}
+					if s[k] == '(' {
+						pDepth++
+					} else if s[k] == ')' {
+						pDepth--
+						if pDepth == 0 {
+							parenClosed = true
+							break
+						}
+					}
+					k++
+				}
+				if parenClosed {
+					label := s[bracketStart+1 : j]
+					if !isImg {
+						out.WriteString(label)
+					} else if trimmedAlt := strings.TrimSpace(label); trimmedAlt != "" {
+						out.WriteString(trimmedAlt)
+					}
+					i = k + 1
+					continue
+				}
+			}
+		}
+		out.WriteByte(s[i])
+		i++
+	}
+	return out.String()
+}
+
+func isASCIIWordByte(b byte) bool {
+	return (b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z') || (b >= '0' && b <= '9')
+}
+
+func stripPairedMarker(s, marker string, wordBoundary bool) string {
+	mLen := len(marker)
+	if mLen == 0 || !strings.Contains(s, marker) {
+		return s
+	}
+	var out strings.Builder
+	out.Grow(len(s))
+	i := 0
+	for i < len(s) {
+		if i+mLen <= len(s) && s[i:i+mLen] == marker {
+			if wordBoundary && i > 0 && isASCIIWordByte(s[i-1]) {
+				out.WriteByte(s[i])
+				i++
+				continue
+			}
+			searchFrom := i + mLen
+			relEnd := strings.Index(s[searchFrom:], marker)
+			if relEnd > 0 {
+				endIdx := searchFrom + relEnd
+				afterEnd := endIdx + mLen
+				if !strings.Contains(s[searchFrom:endIdx], "\n") && (!wordBoundary || afterEnd >= len(s) || !isASCIIWordByte(s[afterEnd])) {
+					out.WriteString(s[searchFrom:endIdx])
+					i = afterEnd
+					continue
+				}
+			}
+		}
+		out.WriteByte(s[i])
+		i++
+	}
+	return out.String()
+}
+
+func stripPairedSingleAsterisk(s string) string {
+	if !strings.Contains(s, "*") {
+		return s
+	}
+	var out strings.Builder
+	out.Grow(len(s))
+	i := 0
+	for i < len(s) {
+		if s[i] == '*' && (i+1 >= len(s) || s[i+1] != '*') && (i == 0 || s[i-1] != '*') {
+			if i+1 < len(s) && s[i+1] != ' ' && s[i+1] != '\t' {
+				relEnd := strings.IndexByte(s[i+1:], '*')
+				if relEnd > 0 {
+					endIdx := i + 1 + relEnd
+					if s[endIdx-1] != ' ' && s[endIdx-1] != '\t' && !strings.Contains(s[i+1:endIdx], "\n") {
+						out.WriteString(s[i+1 : endIdx])
+						i = endIdx + 1
+						continue
+					}
+				}
+			}
+		}
+		out.WriteByte(s[i])
+		i++
+	}
+	return out.String()
 }
 
 func getAttr(n *html.Node, key string) string {
@@ -413,64 +620,82 @@ func extractPlainText(root *html.Node) string {
 }
 
 func renderMarkdown(root *html.Node) string {
+	return strings.TrimSpace(renderMarkdownNode(root))
+}
+
+func extractChildrenMarkdown(n *html.Node) string {
+	var b strings.Builder
+	for c := n.FirstChild; c != nil; c = c.NextSibling {
+		b.WriteString(renderMarkdownNode(c))
+	}
+	return b.String()
+}
+
+func renderMarkdownNode(n *html.Node) string {
 	var b strings.Builder
 	var walk func(*html.Node)
-	walk = func(n *html.Node) {
-		switch n.Type {
+	walk = func(cur *html.Node) {
+		switch cur.Type {
 		case html.TextNode:
-			b.WriteString(n.Data)
+			b.WriteString(cur.Data)
 		case html.ElementNode:
-			switch n.Data {
+			switch cur.Data {
 			case "br":
 				b.WriteByte('\n')
 				return
 			case "b", "strong":
-				inner := extractChildrenMarkdown(n)
-				if inner != "" {
-					b.WriteString("**" + inner + "**")
-				}
+				b.WriteString(wrapInlineMarkdown(extractChildrenMarkdown(cur), "**"))
 				return
 			case "i", "em":
-				inner := extractChildrenMarkdown(n)
-				if inner != "" {
-					b.WriteString("*" + inner + "*")
-				}
+				b.WriteString(wrapInlineMarkdown(extractChildrenMarkdown(cur), "*"))
 				return
+			case "s", "del", "strike":
+				b.WriteString(wrapInlineMarkdown(extractChildrenMarkdown(cur), "~~"))
+				return
+			case "tg-spoiler":
+				b.WriteString(wrapInlineMarkdown(extractChildrenMarkdown(cur), "||"))
+				return
+			case "span":
+				if hasClass(cur, "tg-spoiler") {
+					b.WriteString(wrapInlineMarkdown(extractChildrenMarkdown(cur), "||"))
+					return
+				}
 			case "code":
-				inner := extractPlainText(n)
-				if inner != "" {
+				if inner := extractPlainText(cur); inner != "" {
 					b.WriteString("`" + inner + "`")
 				}
 				return
 			case "pre":
-				inner := extractPlainText(n)
-				if inner != "" {
+				if inner := extractPlainText(cur); inner != "" {
 					b.WriteString("\n```\n" + inner + "\n```\n")
 				}
 				return
 			case "a":
-				href := getAttr(n, "href")
-				label := extractPlainText(n)
-				if href != "" && label != "" {
-					b.WriteString(fmt.Sprintf("[%s](%s)", label, href))
+				href := strings.TrimSpace(getAttr(cur, "href"))
+				label := extractPlainText(cur)
+				cleanLabel := strings.TrimSpace(strings.ReplaceAll(strings.ReplaceAll(label, "\r", " "), "\n", " "))
+				if href != "" && cleanLabel != "" {
+					b.WriteString(fmt.Sprintf("[%s](%s)", cleanLabel, href))
 				} else {
 					b.WriteString(label)
 				}
 				return
 			}
 		}
-		for c := n.FirstChild; c != nil; c = c.NextSibling {
+		for c := cur.FirstChild; c != nil; c = c.NextSibling {
 			walk(c)
 		}
 	}
-	walk(root)
-	return strings.TrimSpace(htmlBrRegex.ReplaceAllString(b.String(), "\n"))
+	walk(n)
+	return htmlBrRegex.ReplaceAllString(b.String(), "\n")
 }
 
-func extractChildrenMarkdown(n *html.Node) string {
-	var b strings.Builder
-	for c := n.FirstChild; c != nil; c = c.NextSibling {
-		b.WriteString(renderMarkdown(c))
+func wrapInlineMarkdown(raw, marker string) string {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return raw
 	}
-	return strings.TrimSpace(b.String())
+	leadLen := len(raw) - len(strings.TrimLeft(raw, " \t\n\r"))
+	trimmedEnd := len(strings.TrimRight(raw, " \t\n\r"))
+	return raw[:leadLen] + marker + raw[leadLen:trimmedEnd] + marker + raw[trimmedEnd:]
 }

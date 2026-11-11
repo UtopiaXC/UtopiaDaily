@@ -1,88 +1,82 @@
 <template>
-    <div class="bg-white dark:bg-gray-800 shadow-sm rounded-xl border border-gray-200 dark:border-gray-700 flex flex-col h-full">
-        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50 rounded-t-xl">
-            <div class="flex space-x-2">
+    <div class="ui-surface flex flex-col h-full">
+        <div class="ui-surface-header pb-0 flex justify-between items-center">
+            <div class="flex gap-6">
                 <button
-                    @click="activeTab = 'users'"
+                    @click="switchTab('users')"
                     :class="[
-                        'px-4 py-2 text-sm font-medium rounded-md transition-colors',
+                        'pb-2.5 px-1 text-sm font-medium border-b-2 transition-colors whitespace-nowrap',
                         activeTab === 'users'
-                            ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
-                            : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                            ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+                            : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
                     ]"
                 >
                     {{ t('users.tab.users') }}
                 </button>
                 <button
-                    @click="activeTab = 'roles'"
+                    @click="switchTab('roles')"
                     :class="[
-                        'px-4 py-2 text-sm font-medium rounded-md transition-colors',
+                        'pb-2.5 px-1 text-sm font-medium border-b-2 transition-colors whitespace-nowrap',
                         activeTab === 'roles'
-                            ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
-                            : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                            ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+                            : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
                     ]"
                 >
                     {{ t('users.tab.roles') }}
                 </button>
             </div>
-            <button
-                @click="refreshAll"
-                class="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 text-sm flex items-center transition-colors bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 px-3 py-1.5 rounded-md shadow-sm hover:shadow"
-            >
-                <span class="material-icons text-sm mr-1" :class="{'animate-spin': loading}">refresh</span>
-                {{ t('common.refresh') }}
+            <button @click="refreshAll" class="ui-btn-secondary mb-2">
+                <span class="material-icons text-[16px]" :class="{ 'animate-spin': loading }">refresh</span>
+                <span>{{ t('common.refresh') }}</span>
             </button>
         </div>
 
-        <div class="p-6 flex-1 overflow-y-auto">
+        <div class="p-5 flex-1 overflow-y-auto">
             <div v-if="activeTab === 'users'">
                 <div v-if="canEdit" class="flex justify-end mb-4">
-                    <button
-                        @click="openUserModal()"
-                        class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition flex items-center gap-1 shadow-sm"
-                    >
-                        <span class="material-icons text-sm">add</span>
-                        {{ t('users.create_user') }}
+                    <button @click="openUserModal()" class="ui-btn-primary text-xs py-1.5 px-3">
+                        <span class="material-icons text-[16px]">add</span>
+                        <span>{{ t('users.create_user') }}</span>
                     </button>
                 </div>
 
-                <div class="overflow-x-auto border border-gray-200 dark:border-gray-700 rounded-lg">
-                    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                        <thead class="bg-gray-50 dark:bg-gray-700/60">
+                <div class="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-lg">
+                    <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
+                        <thead class="bg-slate-50 dark:bg-slate-900/80 text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400">
                             <tr>
-                                <th class="px-5 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{{ t('users.username') }}</th>
-                                <th class="px-5 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{{ t('users.nickname') }}</th>
-                                <th class="px-5 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{{ t('users.email') }}</th>
-                                <th class="px-5 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{{ t('users.role') }}</th>
-                                <th class="px-5 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{{ t('users.status') }}</th>
-                                <th v-if="canEdit" class="px-5 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{{ t('common.actions') }}</th>
+                                <th class="px-4 py-3 text-left font-semibold">{{ t('users.username') }}</th>
+                                <th class="px-4 py-3 text-left font-semibold">{{ t('users.nickname') }}</th>
+                                <th class="px-4 py-3 text-left font-semibold">{{ t('users.email') }}</th>
+                                <th class="px-4 py-3 text-left font-semibold">{{ t('users.role') }}</th>
+                                <th class="px-4 py-3 text-left font-semibold">{{ t('users.status') }}</th>
+                                <th v-if="canEdit" class="px-4 py-3 text-right font-semibold">{{ t('common.actions') }}</th>
                             </tr>
                         </thead>
-                        <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                        <tbody class="bg-white dark:bg-slate-900 divide-y divide-slate-200 dark:divide-slate-800">
                             <tr v-if="users.length === 0">
-                                <td :colspan="canEdit ? 6 : 5" class="px-5 py-8 text-center text-sm text-gray-400">
+                                <td :colspan="canEdit ? 6 : 5" class="px-4 py-8 text-center text-xs text-slate-400">
                                     {{ t('common.no_data') }}
                                 </td>
                             </tr>
-                            <tr v-for="u in users" :key="u.id" class="hover:bg-gray-50/70 dark:hover:bg-gray-700/30">
-                                <td class="px-5 py-3.5 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{{ u.username }}</td>
-                                <td class="px-5 py-3.5 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">{{ u.nickname || '-' }}</td>
-                                <td class="px-5 py-3.5 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{{ u.email || '-' }}</td>
-                                <td class="px-5 py-3.5 whitespace-nowrap text-sm">
-                                    <span class="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                            <tr v-for="u in users" :key="u.id" class="hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
+                                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-slate-900 dark:text-white">{{ u.username }}</td>
+                                <td class="px-4 py-3 whitespace-nowrap text-sm text-slate-600 dark:text-slate-300">{{ u.nickname || '-' }}</td>
+                                <td class="px-4 py-3 whitespace-nowrap text-xs text-slate-500 dark:text-slate-400 font-mono">{{ u.email || '-' }}</td>
+                                <td class="px-4 py-3 whitespace-nowrap text-xs">
+                                    <span class="px-2 py-0.5 font-medium rounded bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-200 dark:border-blue-900">
                                         {{ u.role_name }}
                                     </span>
                                 </td>
-                                <td class="px-5 py-3.5 whitespace-nowrap text-sm">
-                                    <span :class="statusBadgeClass(u.status)" class="px-2.5 py-0.5 text-xs font-semibold rounded-full border">
+                                <td class="px-4 py-3 whitespace-nowrap text-xs">
+                                    <span :class="statusBadgeClass(u.status)" class="px-2 py-0.5 font-medium rounded border">
                                         {{ t('users.status.' + u.status, u.status) }}
                                     </span>
                                 </td>
-                                <td v-if="canEdit" class="px-5 py-3.5 whitespace-nowrap text-right text-xs font-medium space-x-3">
+                                <td v-if="canEdit" class="px-4 py-3 whitespace-nowrap text-right text-xs font-medium space-x-3">
                                     <button
                                         v-if="u.id !== currentUser?.id && u.status !== 'banned'"
                                         @click="banUser(u)"
-                                        class="text-orange-600 dark:text-orange-400 hover:underline"
+                                        class="text-amber-600 dark:text-amber-400 hover:underline"
                                     >
                                         {{ t('users.ban') }}
                                     </button>
@@ -95,7 +89,7 @@
                                     </button>
                                     <button
                                         @click="openResetPwdModal(u)"
-                                        class="text-amber-600 dark:text-amber-400 hover:underline"
+                                        class="text-slate-600 dark:text-slate-300 hover:underline"
                                     >
                                         {{ t('users.reset_password') }}
                                     </button>
@@ -108,7 +102,7 @@
                                     <button
                                         v-if="u.id !== currentUser?.id"
                                         @click="confirmDeleteUser(u)"
-                                        class="text-red-600 dark:text-red-400 hover:underline"
+                                        class="text-rose-600 dark:text-rose-400 hover:underline"
                                     >
                                         {{ t('common.delete') }}
                                     </button>
@@ -121,45 +115,42 @@
 
             <div v-else>
                 <div v-if="canEdit" class="flex justify-end mb-4">
-                    <button
-                        @click="openRoleModal()"
-                        class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition flex items-center gap-1 shadow-sm"
-                    >
-                        <span class="material-icons text-sm">add</span>
-                        {{ t('roles.create_role') }}
+                    <button @click="openRoleModal()" class="ui-btn-primary text-xs py-1.5 px-3">
+                        <span class="material-icons text-[16px]">add</span>
+                        <span>{{ t('roles.create_role') }}</span>
                     </button>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     <div
                         v-for="role in roles"
                         :key="role.id"
-                        class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-5 flex flex-col justify-between hover:shadow-md transition-shadow"
+                        class="ui-card p-4 flex flex-col justify-between hover:border-slate-300 dark:hover:border-slate-700 transition-colors"
                     >
                         <div>
                             <div class="flex items-start justify-between gap-2 mb-2">
                                 <div class="flex items-center gap-2 min-w-0">
-                                    <h4 class="text-base font-bold text-gray-900 dark:text-white truncate">{{ role.name }}</h4>
+                                    <h4 class="text-sm font-semibold text-slate-900 dark:text-white truncate">{{ role.name }}</h4>
                                     <span
                                         v-if="role.is_system"
-                                        class="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 font-medium"
+                                        class="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-medium border border-slate-200 dark:border-slate-700"
                                     >
                                         {{ t('roles.system_badge') }}
                                     </span>
                                 </div>
-                                <span class="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                                <span class="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap font-mono">
                                     {{ t('roles.user_count') }}: {{ role.user_count }}
                                 </span>
                             </div>
-                            <p class="text-sm text-gray-500 dark:text-gray-400 mb-3">
+                            <p class="text-xs text-slate-500 dark:text-slate-400 mb-3">
                                 {{ roleDescription(role) }}
                             </p>
-                            <div class="text-xs text-gray-500 dark:text-gray-400">
+                            <div class="text-xs text-slate-500 dark:text-slate-400 font-mono">
                                 {{ t('roles.permissions') }}: {{ (role.permissions || []).length }}
                             </div>
                         </div>
 
-                        <div v-if="canEdit" class="flex justify-end gap-3 mt-4 pt-3 border-t border-gray-100 dark:border-gray-700">
+                        <div v-if="canEdit" class="flex justify-end gap-3 mt-4 pt-3 border-t border-slate-200 dark:border-slate-800">
                             <button
                                 @click="openRoleModal(role)"
                                 class="text-blue-600 dark:text-blue-400 hover:underline text-xs font-medium"
@@ -169,7 +160,7 @@
                             <button
                                 v-if="!role.is_system"
                                 @click="confirmDeleteRole(role)"
-                                class="text-red-600 dark:text-red-400 hover:underline text-xs font-medium"
+                                class="text-rose-600 dark:text-rose-400 hover:underline text-xs font-medium"
                             >
                                 {{ t('common.delete') }}
                             </button>
@@ -180,18 +171,18 @@
         </div>
 
         <transition name="modal">
-            <div v-if="userModal.show" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm p-4">
-                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl p-6 w-full max-w-md border border-gray-200 dark:border-gray-700">
-                    <h3 class="text-lg font-bold mb-4 text-gray-800 dark:text-white">
+            <div v-if="userModal.show" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4">
+                <div class="bg-white dark:bg-slate-900 rounded-lg p-6 w-full max-w-md border border-slate-200 dark:border-slate-800">
+                    <h3 class="text-base font-semibold mb-4 text-slate-900 dark:text-white">
                         {{ userModal.editing ? t('users.edit_user') : t('users.create_user') }}
                     </h3>
                     <form @submit.prevent="saveUser" class="space-y-4">
                         <div>
                             <div class="flex items-center gap-1.5 mb-1">
-                                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t('users.username') }}</label>
+                                <label class="text-xs font-semibold text-slate-700 dark:text-slate-300">{{ t('users.username') }}</label>
                                 <div v-if="!userModal.editing" class="relative group flex items-center">
-                                    <span class="material-icons text-gray-400 text-sm cursor-help hover:text-blue-500">help_outline</span>
-                                    <div class="absolute left-full ml-2 top-1/2 -translate-y-1/2 w-56 p-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20">
+                                    <span class="material-icons text-slate-400 text-[15px] cursor-help hover:text-blue-500">help_outline</span>
+                                    <div class="absolute left-full ml-2 top-1/2 -translate-y-1/2 w-56 p-2 bg-slate-900 text-white text-xs rounded-md border border-slate-700 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20">
                                         {{ t('auth.register.username_hint') }}
                                     </div>
                                 </div>
@@ -200,62 +191,42 @@
                                 v-model="userForm.username"
                                 type="text"
                                 :disabled="!!userModal.editing"
-                                class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm bg-white dark:bg-gray-700 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-900"
+                                class="ui-input"
                             >
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('users.nickname') }}</label>
-                            <input
-                                v-model="userForm.nickname"
-                                type="text"
-                                class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm bg-white dark:bg-gray-700 dark:text-white"
-                            >
+                            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">{{ t('users.nickname') }}</label>
+                            <input v-model="userForm.nickname" type="text" class="ui-input">
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('users.email') }}</label>
-                            <input
-                                v-model="userForm.email"
-                                type="email"
-                                class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm bg-white dark:bg-gray-700 dark:text-white"
-                            >
+                            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">{{ t('users.email') }}</label>
+                            <input v-model="userForm.email" type="email" class="ui-input">
                         </div>
                         <div v-if="!userModal.editing">
                             <div class="flex items-center gap-1.5 mb-1">
-                                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t('users.password') }}</label>
+                                <label class="text-xs font-semibold text-slate-700 dark:text-slate-300">{{ t('users.password') }}</label>
                                 <div class="relative group flex items-center">
-                                    <span class="material-icons text-gray-400 text-sm cursor-help hover:text-blue-500">help_outline</span>
-                                    <div class="absolute left-full ml-2 top-1/2 -translate-y-1/2 w-48 p-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20">
+                                    <span class="material-icons text-slate-400 text-[15px] cursor-help hover:text-blue-500">help_outline</span>
+                                    <div class="absolute left-full ml-2 top-1/2 -translate-y-1/2 w-48 p-2 bg-slate-900 text-white text-xs rounded-md border border-slate-700 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20">
                                         {{ t('auth.register.password_hint') }}
                                     </div>
                                 </div>
                             </div>
-                            <input
-                                v-model="userForm.password"
-                                type="password"
-                                class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm bg-white dark:bg-gray-700 dark:text-white"
-                            >
+                            <input v-model="userForm.password" type="password" class="ui-input">
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('users.role') }}</label>
+                            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">{{ t('users.role') }}</label>
                             <CustomSelect v-model="userForm.role_id" :options="roleSelectOptions" />
                         </div>
                         <div v-if="userModal.editing">
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('users.status') }}</label>
+                            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">{{ t('users.status') }}</label>
                             <CustomSelect v-model="userForm.status" :options="userStatusOptions" />
                         </div>
-                        <div class="flex justify-end gap-3 pt-2">
-                            <button
-                                type="button"
-                                @click="userModal.show = false"
-                                class="px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
-                            >
+                        <div class="flex justify-end gap-2 pt-2">
+                            <button type="button" @click="userModal.show = false" class="ui-btn-secondary">
                                 {{ t('common.cancel') }}
                             </button>
-                            <button
-                                type="submit"
-                                :disabled="submitting"
-                                class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg disabled:opacity-50"
-                            >
+                            <button type="submit" :disabled="submitting" class="ui-btn-primary">
                                 {{ t('common.save') }}
                             </button>
                         </div>
@@ -265,32 +236,20 @@
         </transition>
 
         <transition name="modal">
-            <div v-if="pwdModal.show" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm p-4">
-                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl p-6 w-full max-w-sm border border-gray-200 dark:border-gray-700">
-                    <h3 class="text-lg font-bold mb-1 text-gray-800 dark:text-white">{{ t('users.reset_password') }}</h3>
-                    <p class="text-xs text-gray-500 dark:text-gray-400 mb-4">{{ pwdModal.user?.username }}</p>
+            <div v-if="pwdModal.show" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4">
+                <div class="bg-white dark:bg-slate-900 rounded-lg p-6 w-full max-w-sm border border-slate-200 dark:border-slate-800">
+                    <h3 class="text-base font-semibold mb-1 text-slate-900 dark:text-white">{{ t('users.reset_password') }}</h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mb-4 font-mono">{{ pwdModal.user?.username }}</p>
                     <form @submit.prevent="submitResetPassword" class="space-y-4">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('auth.reset.new_password') }}</label>
-                            <input
-                                v-model="pwdModal.password"
-                                type="password"
-                                class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm bg-white dark:bg-gray-700 dark:text-white"
-                            >
+                            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">{{ t('auth.reset.new_password') }}</label>
+                            <input v-model="pwdModal.password" type="password" class="ui-input">
                         </div>
-                        <div class="flex justify-end gap-3">
-                            <button
-                                type="button"
-                                @click="pwdModal.show = false"
-                                class="px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
-                            >
+                        <div class="flex justify-end gap-2">
+                            <button type="button" @click="pwdModal.show = false" class="ui-btn-secondary">
                                 {{ t('common.cancel') }}
                             </button>
-                            <button
-                                type="submit"
-                                :disabled="submitting"
-                                class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg disabled:opacity-50"
-                            >
+                            <button type="submit" :disabled="submitting" class="ui-btn-primary">
                                 {{ t('common.confirm') }}
                             </button>
                         </div>
@@ -300,61 +259,51 @@
         </transition>
 
         <transition name="modal">
-            <div v-if="roleModal.show" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm p-4">
-                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl p-6 w-full max-w-2xl max-h-[88vh] flex flex-col border border-gray-200 dark:border-gray-700">
-                    <h3 class="text-lg font-bold mb-4 text-gray-800 dark:text-white">
+            <div v-if="roleModal.show" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4">
+                <div class="bg-white dark:bg-slate-900 rounded-lg p-6 w-full max-w-2xl max-h-[88vh] flex flex-col border border-slate-200 dark:border-slate-800">
+                    <h3 class="text-base font-semibold mb-4 text-slate-900 dark:text-white">
                         {{ roleModal.editing ? t('roles.edit_role') : t('roles.create_role') }}
                     </h3>
 
-                    <div v-if="isEditingAdminRole" class="mb-4 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-xs text-amber-700 dark:text-amber-300">
+                    <div v-if="isEditingAdminRole" class="mb-4 p-3 rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 text-xs text-amber-800 dark:text-amber-300">
                         {{ t('roles.admin_locked') }}
                     </div>
 
                     <form @submit.prevent="saveRole" class="flex-1 overflow-y-auto space-y-4 pr-1">
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('roles.name') }}</label>
-                                <input
-                                    v-model="roleForm.name"
-                                    type="text"
-                                    :disabled="roleModal.editing?.is_system"
-                                    class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm bg-white dark:bg-gray-700 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-900"
-                                >
+                                <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">{{ t('roles.name') }}</label>
+                                <input v-model="roleForm.name" type="text" :disabled="roleModal.editing?.is_system" class="ui-input">
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('roles.description') }}</label>
-                                <input
-                                    v-model="roleForm.description"
-                                    type="text"
-                                    :disabled="isEditingAdminRole"
-                                    class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm bg-white dark:bg-gray-700 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-900"
-                                >
+                                <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">{{ t('roles.description') }}</label>
+                                <input v-model="roleForm.description" type="text" :disabled="isEditingAdminRole" class="ui-input">
                             </div>
                         </div>
 
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{ t('roles.permissions') }}</label>
+                            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2">{{ t('roles.permissions') }}</label>
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div
                                     v-for="(perms, grp) in groupedPermissions"
                                     :key="grp"
-                                    class="border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-gray-50/50 dark:bg-gray-900/30"
+                                    class="border border-slate-200 dark:border-slate-800 rounded-md p-3 bg-slate-50/60 dark:bg-slate-950/40"
                                 >
-                                    <div class="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">
+                                    <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
                                         {{ t('permission_group.' + grp, grp) }}
                                     </div>
                                     <div class="space-y-1.5">
                                         <label
                                             v-for="p in perms"
                                             :key="p.code"
-                                            class="flex items-start gap-2 text-xs text-gray-700 dark:text-gray-300 cursor-pointer"
+                                            class="flex items-start gap-2 text-xs text-slate-700 dark:text-slate-300 cursor-pointer"
                                         >
                                             <input
                                                 type="checkbox"
                                                 :value="p.code"
                                                 v-model="roleForm.permissions"
                                                 :disabled="isEditingAdminRole"
-                                                class="mt-0.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                                class="mt-0.5 rounded border-slate-300 dark:border-slate-600 text-blue-600 focus:ring-blue-500"
                                             >
                                             <span>{{ t('permission.' + p.code, p.code) }}</span>
                                         </label>
@@ -363,20 +312,11 @@
                             </div>
                         </div>
 
-                        <div class="flex justify-end gap-3 pt-3 border-t border-gray-200 dark:border-gray-700">
-                            <button
-                                type="button"
-                                @click="roleModal.show = false"
-                                class="px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
-                            >
+                        <div class="flex justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
+                            <button type="button" @click="roleModal.show = false" class="ui-btn-secondary">
                                 {{ t('common.cancel') }}
                             </button>
-                            <button
-                                v-if="!isEditingAdminRole"
-                                type="submit"
-                                :disabled="submitting"
-                                class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg disabled:opacity-50"
-                            >
+                            <button v-if="!isEditingAdminRole" type="submit" :disabled="submitting" class="ui-btn-primary">
                                 {{ t('common.save') }}
                             </button>
                         </div>
@@ -403,49 +343,33 @@ import ConfirmModal from '../../components/ConfirmModal.vue';
 
 export default {
     components: { CustomSelect, ConfirmModal },
-    props: ['t', 'currentUser'],
+    props: ['t', 'currentUser', 'subtab'],
+    emits: ['update:subtab'],
     inject: ['showToast'],
     data() {
+        const initialTab = ['users', 'roles'].includes(this.subtab) ? this.subtab : 'users';
         return {
-            activeTab: 'users',
+            activeTab: initialTab,
             loading: false,
             submitting: false,
             users: [],
             roles: [],
             permissions: [],
-            userModal: {
-                show: false,
-                editing: null
-            },
-            userForm: {
-                username: '',
-                nickname: '',
-                email: '',
-                password: '',
-                role_id: 2,
-                status: 'active'
-            },
-            pwdModal: {
-                show: false,
-                user: null,
-                password: ''
-            },
-            roleModal: {
-                show: false,
-                editing: null
-            },
-            roleForm: {
-                name: '',
-                description: '',
-                permissions: []
-            },
-            confirmModal: {
-                show: false,
-                title: '',
-                message: '',
-                onConfirm: null
-            }
+            userModal: { show: false, editing: null },
+            userForm: { username: '', nickname: '', email: '', password: '', role_id: 2, status: 'active' },
+            pwdModal: { show: false, user: null, password: '' },
+            roleModal: { show: false, editing: null },
+            roleForm: { name: '', description: '', permissions: [] },
+            confirmModal: { show: false, title: '', message: '', onConfirm: null }
         };
+    },
+    watch: {
+        subtab(next) {
+            const target = ['users', 'roles'].includes(next) ? next : 'users';
+            if (target !== this.activeTab) {
+                this.activeTab = target;
+            }
+        }
     },
     computed: {
         canEdit() {
@@ -478,6 +402,11 @@ export default {
         this.refreshAll();
     },
     methods: {
+        switchTab(tab) {
+            const target = ['users', 'roles'].includes(tab) ? tab : 'users';
+            this.activeTab = target;
+            this.$emit('update:subtab', target);
+        },
         async refreshAll() {
             this.loading = true;
             try {
@@ -498,12 +427,12 @@ export default {
         statusBadgeClass(status) {
             switch (status) {
                 case 'active':
-                    return 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-800';
+                    return 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900';
                 case 'frozen':
                 case 'inactive':
-                    return 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-800';
+                    return 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900';
                 default:
-                    return 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800';
+                    return 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-900';
             }
         },
         roleDescription(role) {
@@ -621,11 +550,7 @@ export default {
                     permissions: Array.isArray(role.permissions) ? [...role.permissions] : []
                 };
             } else {
-                this.roleForm = {
-                    name: '',
-                    description: '',
-                    permissions: []
-                };
+                this.roleForm = { name: '', description: '', permissions: [] };
             }
         },
         async saveRole() {

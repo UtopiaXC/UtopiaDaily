@@ -46,7 +46,7 @@ func LoadPluginDir(dir string) (*Manifest, map[string]map[string]string, error) 
 		return nil, nil, errors.New("manifest missing command")
 	}
 	if m.Version == "" {
-		m.Version = "1.0.0"
+		m.Version = module.DefaultVersion
 	}
 
 	locales := make(map[string]map[string]string)

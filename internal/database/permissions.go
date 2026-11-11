@@ -17,6 +17,11 @@ const (
 	PermFrontendConfigView = "frontend.config.view"
 	PermFrontendConfigEdit = "frontend.config.edit"
 	PermUserPushSettings   = "user_push.settings"
+	PermNewspaperView      = "newspaper.view"
+	PermDataView           = "data.view"
+	PermDataEdit           = "data.edit"
+	PermClassificationView = "classification.view"
+	PermClassificationEdit = "classification.edit"
 )
 
 func AllPermissions() []string {
@@ -35,12 +40,18 @@ func AllPermissions() []string {
 		PermFrontendConfigView,
 		PermFrontendConfigEdit,
 		PermUserPushSettings,
+		PermNewspaperView,
+		PermDataView,
+		PermDataEdit,
+		PermClassificationView,
+		PermClassificationEdit,
 	}
 }
 
 func DefaultUserPermissions() []string {
 	return []string{
 		PermUserPushSettings,
+		PermNewspaperView,
 	}
 }
 

@@ -25,7 +25,7 @@ Only `manifest.json` and the entrypoint referenced by `command` are mandatory.
 {
   "id": "example_plugin",
   "kind": "scraper",
-  "version": "1.0.0",
+  "version": "0.2.0",
   "author": "Author",
   "command": ["python3", "main.py"],
   "configs": [

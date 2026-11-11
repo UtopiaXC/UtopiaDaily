@@ -1,66 +1,66 @@
 <template>
-    <div class="flex flex-col gap-6 h-full overflow-y-auto">
-        <div class="flex flex-col md:flex-row gap-4 md:gap-6">
+    <div class="flex flex-col gap-5 h-full overflow-y-auto">
+        <div class="flex flex-col md:flex-row gap-4 md:gap-5">
             <div
-                class="bg-white dark:bg-gray-800 shadow-sm rounded-xl border border-gray-200 dark:border-gray-700 flex flex-col"
+                class="ui-surface flex flex-col"
                 :class="selectedModule ? 'hidden md:flex md:w-72 lg:w-80 flex-shrink-0' : 'w-full flex-1 md:w-72 lg:w-80 md:flex-none'"
             >
-                <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-                    <h3 class="text-lg font-bold text-gray-900 dark:text-white">{{ t('push.modules') }}</h3>
+                <div class="ui-surface-header px-4 py-3 flex justify-between items-center">
+                    <h3 class="text-sm font-semibold text-slate-900 dark:text-white tracking-tight">{{ t('push.modules') }}</h3>
                     <button
                         v-if="canEdit"
                         @click="reloadModules"
                         :disabled="reloading"
-                        class="px-3 py-1.5 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg text-xs font-medium transition-colors flex items-center gap-1"
+                        class="ui-btn-secondary py-1 px-2.5 text-xs"
                     >
-                        <span class="material-icons text-sm" :class="{'animate-spin': reloading}">refresh</span>
-                        {{ t('scraper.reload_modules') }}
+                        <span class="material-icons text-[15px]" :class="{ 'animate-spin': reloading }">refresh</span>
+                        <span>{{ t('scraper.reload_modules') }}</span>
                     </button>
                     <button
                         v-else
                         @click="fetchModules"
-                        class="p-1.5 text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+                        class="p-1.5 text-slate-500 hover:text-blue-600 dark:text-slate-400 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800"
                         :title="t('common.refresh')"
                     >
-                        <span class="material-icons text-sm" :class="{'animate-spin': loadingList}">refresh</span>
+                        <span class="material-icons text-[16px]" :class="{ 'animate-spin': loadingList }">refresh</span>
                     </button>
                 </div>
 
-                <div class="flex-1 overflow-y-auto p-2 space-y-2">
-                    <div v-if="loadingList" class="p-6 text-center text-gray-400 text-sm">
+                <div class="flex-1 overflow-y-auto p-2 space-y-1.5">
+                    <div v-if="loadingList" class="p-6 text-center text-slate-400 text-xs">
                         {{ t('common.loading') }}
                     </div>
-                    <div v-else-if="modules.length === 0" class="p-6 text-center text-gray-400 text-sm">
+                    <div v-else-if="modules.length === 0" class="p-6 text-center text-slate-400 text-xs">
                         {{ t('common.no_data') }}
                     </div>
                     <div
                         v-for="mod in modules"
                         :key="mod.module_id"
                         @click="selectModule(mod)"
-                        class="p-3 rounded-lg cursor-pointer transition-colors flex flex-col gap-2 border"
+                        class="p-3 rounded-md cursor-pointer transition-colors flex flex-col gap-2 border"
                         :class="selectedModule && selectedModule.module_id === mod.module_id
-                            ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
-                            : 'hover:bg-gray-50 dark:hover:bg-gray-700/50 border-transparent'"
+                            ? 'bg-blue-50/70 dark:bg-blue-950/30 border-blue-200 dark:border-blue-900'
+                            : 'hover:bg-slate-50 dark:hover:bg-slate-800/50 border-transparent'"
                     >
                         <div class="flex justify-between items-start gap-2">
-                            <div class="font-medium text-gray-900 dark:text-white truncate">{{ t(mod.name, mod.module_id) }}</div>
-                            <div class="text-xs text-gray-400 font-mono flex-shrink-0">{{ mod.version }}</div>
+                            <div class="font-medium text-sm text-slate-900 dark:text-white truncate">{{ t(mod.name, mod.module_id) }}</div>
+                            <div class="text-[11px] text-slate-400 font-mono flex-shrink-0">{{ mod.version }}</div>
                         </div>
 
                         <div class="flex items-center gap-1.5 flex-wrap">
                             <span
                                 class="text-[10px] px-1.5 py-0.5 rounded border font-medium uppercase tracking-wider"
                                 :class="mod.source === 'external'
-                                    ? 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-800'
-                                    : 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800'"
+                                    ? 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-900'
+                                    : 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-900'"
                             >
                                 {{ t('scraper.source.' + mod.source, mod.source) }}
                             </span>
                             <span
                                 class="text-[10px] px-1.5 py-0.5 rounded border font-medium"
                                 :class="mod.is_enable
-                                    ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-800'
-                                    : 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800'"
+                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900'
+                                    : 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-900'"
                             >
                                 {{ mod.is_enable ? t('scraper.status.enabled') : t('scraper.status.disabled') }}
                             </span>
@@ -68,8 +68,8 @@
                                 v-if="mod.source === 'external'"
                                 class="text-[10px] px-1.5 py-0.5 rounded border font-medium"
                                 :class="mod.env_ready
-                                    ? 'bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-900/20 dark:text-teal-300 dark:border-teal-800'
-                                    : 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-800'"
+                                    ? 'bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-900'
+                                    : 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900'"
                             >
                                 {{ mod.env_ready ? t('scraper.env.ready') : t('scraper.env.pending') }}
                             </span>
@@ -79,29 +79,29 @@
             </div>
 
             <div
-                class="bg-white dark:bg-gray-800 shadow-sm rounded-xl border border-gray-200 dark:border-gray-700 flex flex-col overflow-hidden"
+                class="ui-surface flex flex-col overflow-hidden"
                 :class="selectedModule ? 'w-full flex-1' : 'hidden md:flex md:flex-1'"
             >
                 <div v-if="selectedModule" class="flex flex-col">
-                    <div class="p-4 md:p-6 border-b border-gray-200 dark:border-gray-700">
+                    <div class="p-4 md:p-5 border-b border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-900/40">
                         <div class="flex items-start gap-3 mb-3">
                             <button
-                                @click="selectedModule = null"
-                                class="md:hidden p-1 -ml-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500"
+                                @click="clearSelectedModule"
+                                class="md:hidden p-1 -ml-1 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500"
                             >
                                 <span class="material-icons">arrow_back</span>
                             </button>
                             <div class="flex-1 min-w-0">
-                                <h2 class="text-xl font-bold text-gray-900 dark:text-white break-words">
+                                <h2 class="text-lg font-semibold text-slate-900 dark:text-white break-words">
                                     {{ t(selectedModule.name, selectedModule.module_id) }}
                                 </h2>
-                                <p class="text-gray-500 dark:text-gray-400 text-sm mt-1">
+                                <p class="text-slate-500 dark:text-slate-400 text-xs mt-1">
                                     {{ t(selectedModule.description, '') }}
                                 </p>
                             </div>
                         </div>
 
-                        <div class="flex flex-wrap gap-x-6 gap-y-2 text-xs text-gray-500 dark:text-gray-400 mb-4">
+                        <div class="flex flex-wrap gap-x-5 gap-y-1.5 text-xs text-slate-500 dark:text-slate-400 mb-4">
                             <span class="flex items-center gap-1">
                                 <span class="material-icons text-[14px]">fingerprint</span>
                                 <span class="font-mono">{{ selectedModule.module_id }}</span>
@@ -112,7 +112,7 @@
                             </span>
                             <span class="flex items-center gap-1">
                                 <span class="material-icons text-[14px]">tag</span>
-                                <span>{{ selectedModule.version }}</span>
+                                <span class="font-mono">{{ selectedModule.version }}</span>
                             </span>
                             <span class="flex items-center gap-1">
                                 <span class="material-icons text-[14px]">extension</span>
@@ -120,19 +120,19 @@
                             </span>
                         </div>
 
-                        <div v-if="canEdit" class="flex flex-wrap gap-3 justify-end">
+                        <div v-if="canEdit" class="flex flex-wrap gap-2.5 justify-end">
                             <div v-if="selectedModule.source === 'external'" class="flex items-center gap-1.5">
                                 <button
                                     @click="prepareEnv"
                                     :disabled="preparingEnv"
-                                    class="px-3.5 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-100 rounded-lg text-sm font-medium flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                                    class="ui-btn-secondary text-xs py-1.5 px-3"
                                 >
-                                    <span class="material-icons text-sm" :class="{'animate-spin': preparingEnv}">build</span>
-                                    {{ preparingEnv ? t('scraper.env.rebuilding') : t('scraper.prepare_env') }}
+                                    <span class="material-icons text-[15px]" :class="{ 'animate-spin': preparingEnv }">build</span>
+                                    <span>{{ preparingEnv ? t('scraper.env.rebuilding') : t('scraper.prepare_env') }}</span>
                                 </button>
                                 <div class="relative group flex items-center">
-                                    <span class="material-icons text-gray-400 text-sm cursor-help hover:text-blue-500">help_outline</span>
-                                    <div class="absolute right-0 bottom-full mb-2 w-60 p-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20">
+                                    <span class="material-icons text-slate-400 text-[16px] cursor-help hover:text-blue-500">help_outline</span>
+                                    <div class="absolute right-0 bottom-full mb-2 w-60 p-2 bg-slate-900 text-white text-xs rounded-md border border-slate-700 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20">
                                         {{ t('scraper.prepare_env_hint') }}
                                     </div>
                                 </div>
@@ -141,234 +141,246 @@
                             <button
                                 @click="requestToggleEnable"
                                 :disabled="enabling"
-                                class="px-4 py-2 rounded-lg text-white transition-colors text-sm font-medium flex items-center gap-1.5 disabled:opacity-50"
-                                :class="selectedModule.is_enable ? 'bg-red-500 hover:bg-red-600' : 'bg-emerald-600 hover:bg-emerald-700'"
+                                class="text-xs py-1.5 px-3.5"
+                                :class="selectedModule.is_enable ? 'ui-btn-danger' : 'ui-btn-emerald'"
                             >
-                                <span class="material-icons text-sm" :class="{'animate-spin': enabling}">
+                                <span class="material-icons text-[15px]" :class="{ 'animate-spin': enabling }">
                                     {{ enabling ? 'sync' : (selectedModule.is_enable ? 'power_settings_new' : 'play_arrow') }}
                                 </span>
-                                {{ enabling ? t('common.enabling') : (selectedModule.is_enable ? t('common.disable') : t('common.enable')) }}
+                                <span>{{ enabling ? t('common.enabling') : (selectedModule.is_enable ? t('common.disable') : t('common.enable')) }}</span>
                             </button>
                         </div>
                     </div>
 
-                    <div class="p-4 md:p-6 space-y-6">
+                    <div class="p-4 md:p-5 space-y-5">
                         <div v-if="loadingDetail" class="flex justify-center py-8">
-                            <span class="material-icons animate-spin text-3xl text-blue-500">sync</span>
+                            <span class="material-icons animate-spin text-2xl text-blue-600">sync</span>
                         </div>
 
                         <template v-else-if="moduleDetail">
-                            <div class="space-y-4 bg-gray-50/70 dark:bg-gray-900/30 p-5 rounded-xl border border-gray-200 dark:border-gray-700">
-                                <h4 class="text-sm font-bold text-gray-800 dark:text-white flex items-center gap-2">
-                                    <span class="material-icons text-blue-500 text-lg">tune</span>
-                                    {{ t('scraper.config.settings') }}
-                                </h4>
-
-                                <div v-if="!moduleDetail.config || moduleDetail.config.length === 0" class="text-sm text-gray-400 py-4 text-center">
-                                    {{ t('push.no_config') }}
-                                </div>
-
-                                <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div v-for="field in sortedConfigFields" :key="field.key" class="flex flex-col gap-1.5">
-                                        <div class="flex items-center gap-1.5">
-                                            <label class="text-sm font-semibold text-gray-700 dark:text-gray-200">
-                                                {{ t(field.description, field.key) }}
-                                            </label>
-                                            <div v-if="hasTranslation(field.hint)" class="relative group flex items-center">
-                                                <span class="material-icons text-gray-400 text-sm cursor-help hover:text-blue-500">help_outline</span>
-                                                <div class="absolute left-full ml-2 top-1/2 -translate-y-1/2 w-64 p-2.5 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20">
-                                                    {{ t(field.hint) }}
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div v-if="field.type === 'array'" class="space-y-2">
-                                            <div class="flex flex-wrap gap-2">
-                                                <span
-                                                    v-for="(item, idx) in (formValues[field.key] || [])"
-                                                    :key="idx"
-                                                    class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border border-blue-200 dark:border-blue-800"
-                                                >
-                                                    <span>{{ item }}</span>
-                                                    <button
-                                                        v-if="canEdit && !isFieldDisabled(field)"
-                                                        type="button"
-                                                        @click="removeArrayItem(field.key, idx)"
-                                                        class="hover:text-red-500 flex items-center"
-                                                    >
-                                                        <span class="material-icons text-[14px]">close</span>
-                                                    </button>
-                                                </span>
-                                            </div>
-                                            <div v-if="canEdit && !isFieldDisabled(field)" class="flex gap-2">
-                                                <input
-                                                    v-model="arrayDrafts[field.key]"
-                                                    @keyup.enter.prevent="addArrayItem(field.key)"
-                                                    type="text"
-                                                    :placeholder="t('scraper.array_placeholder')"
-                                                    class="flex-1 border border-gray-300 dark:border-gray-600 rounded-md px-3 py-1.5 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                                                >
-                                                <button
-                                                    type="button"
-                                                    @click="addArrayItem(field.key)"
-                                                    class="px-3 py-1.5 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-800 dark:text-white rounded-md text-xs font-medium flex items-center gap-1"
-                                                >
-                                                    <span class="material-icons text-sm">add</span>
-                                                    {{ t('common.add') }}
-                                                </button>
-                                            </div>
-                                        </div>
-
-                                        <CustomSelect
-                                            v-else-if="field.type === 'select'"
-                                            v-model="formValues[field.key]"
-                                            :options="field.options || []"
-                                            :disabled="!canEdit || isFieldDisabled(field)"
-                                        />
-
-                                        <CustomSelect
-                                            v-else-if="field.type === 'bool' || field.type === 'boolean'"
-                                            v-model="formValues[field.key]"
-                                            :options="[
-                                                { label: t('common.true'), value: true },
-                                                { label: t('common.false'), value: false }
-                                            ]"
-                                            :disabled="!canEdit || isFieldDisabled(field)"
-                                        />
-
-                                        <input
-                                            v-else-if="field.type === 'int'"
-                                            v-model="formValues[field.key]"
-                                            type="number"
-                                            :disabled="!canEdit || isFieldDisabled(field)"
-                                            class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:opacity-60"
+                            <div class="ui-card">
+                                <div class="ui-card-header">
+                                    <div class="flex items-center gap-2">
+                                        <span class="material-icons text-slate-500 dark:text-slate-400 text-[18px]">tune</span>
+                                        <span class="text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-200">
+                                            {{ t('scraper.config.settings') }}
+                                        </span>
+                                    </div>
+                                    <div v-if="canEdit" class="flex items-center gap-2">
+                                        <button
+                                            @click="testModule"
+                                            :disabled="testing"
+                                            class="ui-btn-secondary text-xs py-1.5 px-3"
                                         >
-
-                                        <input
-                                            v-else
-                                            v-model="formValues[field.key]"
-                                            :type="field.secret || field.type === 'password' ? 'password' : 'text'"
-                                            :disabled="!canEdit || isFieldDisabled(field)"
-                                            class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:opacity-60"
+                                            <span class="material-icons text-[15px]" :class="{ 'animate-spin': testing }">
+                                                {{ testing ? 'sync' : 'wifi_tethering' }}
+                                            </span>
+                                            <span>{{ testing ? t('common.testing') : t('scraper.config.test') }}</span>
+                                        </button>
+                                        <button
+                                            @click="saveConfig"
+                                            :disabled="saving"
+                                            class="ui-btn-primary text-xs py-1.5 px-3"
                                         >
+                                            <span class="material-icons text-[15px]" :class="{ 'animate-spin': saving }">
+                                                {{ saving ? 'sync' : 'save' }}
+                                            </span>
+                                            <span>{{ saving ? t('common.saving') : t('common.save') }}</span>
+                                        </button>
                                     </div>
                                 </div>
 
-                                <div v-if="canEdit" class="flex flex-wrap justify-end gap-3 pt-2">
-                                    <button
-                                        @click="testModule"
-                                        :disabled="testing"
-                                        class="px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-800 dark:text-white rounded-lg text-sm font-medium flex items-center gap-1.5 transition-colors disabled:opacity-50"
-                                    >
-                                        <span class="material-icons text-sm" :class="{'animate-spin': testing}">
-                                            {{ testing ? 'sync' : 'wifi_tethering' }}
-                                        </span>
-                                        {{ testing ? t('common.testing') : t('scraper.config.test') }}
-                                    </button>
-                                    <button
-                                        @click="saveConfig"
-                                        :disabled="saving"
-                                        class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium flex items-center gap-1.5 transition-colors shadow-sm disabled:opacity-50"
-                                    >
-                                        <span class="material-icons text-sm" :class="{'animate-spin': saving}">
-                                            {{ saving ? 'sync' : 'save' }}
-                                        </span>
-                                        {{ saving ? t('common.saving') : t('common.save') }}
-                                    </button>
+                                <div class="p-4">
+                                    <div v-if="!moduleDetail.config || moduleDetail.config.length === 0" class="text-xs text-slate-400 py-4 text-center">
+                                        {{ t('push.no_config') }}
+                                    </div>
+
+                                    <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div v-for="field in sortedConfigFields" :key="field.key" class="flex flex-col gap-1.5">
+                                            <div class="flex items-center gap-1.5">
+                                                <label class="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                                                    {{ t(field.description, field.key) }}
+                                                </label>
+                                                <div v-if="hasTranslation(field.hint)" class="relative group flex items-center">
+                                                    <span class="material-icons text-slate-400 text-[15px] cursor-help hover:text-blue-500">help_outline</span>
+                                                    <div class="absolute left-full ml-2 top-1/2 -translate-y-1/2 w-64 p-2.5 bg-slate-900 text-white text-xs rounded-md border border-slate-700 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20">
+                                                        {{ t(field.hint) }}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div v-if="field.type === 'array'" class="space-y-2">
+                                                <div class="flex flex-wrap gap-1.5">
+                                                    <span
+                                                        v-for="(item, idx) in (formValues[field.key] || [])"
+                                                        :key="idx"
+                                                        class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-200 dark:border-blue-900"
+                                                    >
+                                                        <span>{{ item }}</span>
+                                                        <button
+                                                            v-if="canEdit && !isFieldDisabled(field)"
+                                                            type="button"
+                                                            @click="removeArrayItem(field.key, idx)"
+                                                            class="hover:text-rose-500 flex items-center"
+                                                        >
+                                                            <span class="material-icons text-[14px]">close</span>
+                                                        </button>
+                                                    </span>
+                                                </div>
+                                                <div v-if="canEdit && !isFieldDisabled(field)" class="flex gap-2">
+                                                    <input
+                                                        v-model="arrayDrafts[field.key]"
+                                                        @keyup.enter.prevent="addArrayItem(field.key)"
+                                                        type="text"
+                                                        :placeholder="t('scraper.array_placeholder')"
+                                                        class="ui-input flex-1 py-1.5"
+                                                    >
+                                                    <button
+                                                        type="button"
+                                                        @click="addArrayItem(field.key)"
+                                                        class="ui-btn-secondary py-1.5 px-3 text-xs"
+                                                    >
+                                                        <span class="material-icons text-[15px]">add</span>
+                                                        <span>{{ t('common.add') }}</span>
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            <CustomSelect
+                                                v-else-if="field.type === 'select'"
+                                                v-model="formValues[field.key]"
+                                                :options="field.options || []"
+                                                :disabled="!canEdit || isFieldDisabled(field)"
+                                            />
+
+                                            <CustomSelect
+                                                v-else-if="field.type === 'bool' || field.type === 'boolean'"
+                                                v-model="formValues[field.key]"
+                                                :options="[
+                                                    { label: t('common.true'), value: true },
+                                                    { label: t('common.false'), value: false }
+                                                ]"
+                                                :disabled="!canEdit || isFieldDisabled(field)"
+                                            />
+
+                                            <input
+                                                v-else-if="field.type === 'int'"
+                                                v-model="formValues[field.key]"
+                                                type="number"
+                                                :disabled="!canEdit || isFieldDisabled(field)"
+                                                class="ui-input"
+                                            >
+
+                                            <input
+                                                v-else
+                                                v-model="formValues[field.key]"
+                                                :type="field.secret || field.type === 'password' ? 'password' : 'text'"
+                                                :disabled="!canEdit || isFieldDisabled(field)"
+                                                class="ui-input"
+                                            >
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div class="space-y-3">
-                                <h4 class="text-sm font-bold text-gray-800 dark:text-white flex items-center gap-2">
-                                    <span class="material-icons text-blue-500 text-lg">playlist_play</span>
-                                    {{ t('scraper.config.tasks') }}
-                                </h4>
-                                <div
-                                    v-for="task in (moduleDetail.tasks || [])"
-                                    :key="task.task_key"
-                                    class="p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-                                >
-                                    <div>
-                                        <div class="flex items-center gap-2 flex-wrap">
-                                            <span class="font-semibold text-sm text-gray-900 dark:text-white">
-                                                {{ t(task.name, task.task_key) }}
-                                            </span>
-                                            <span class="text-xs font-mono px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
-                                                {{ task.cron_expr }}
-                                            </span>
-                                        </div>
-                                        <p v-if="hasTranslation(task.description)" class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                            {{ t(task.description) }}
-                                        </p>
-                                    </div>
-                                    <button
-                                        v-if="canEdit"
-                                        @click="runTask(task.task_key)"
-                                        :disabled="runningTask === task.task_key"
-                                        class="px-3.5 py-2 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/40 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors disabled:opacity-50 flex-shrink-0"
-                                    >
-                                        <span class="material-icons text-sm" :class="{'animate-spin': runningTask === task.task_key}">
-                                            {{ runningTask === task.task_key ? 'sync' : 'send' }}
+                            <div class="ui-card">
+                                <div class="ui-card-header">
+                                    <div class="flex items-center gap-2">
+                                        <span class="material-icons text-slate-500 dark:text-slate-400 text-[18px]">playlist_play</span>
+                                        <span class="text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-200">
+                                            {{ t('scraper.config.tasks') }}
                                         </span>
-                                        {{ runningTask === task.task_key ? t('common.running') : t('scraper.run_task') }}
-                                    </button>
+                                    </div>
+                                </div>
+                                <div class="divide-y divide-slate-200 dark:divide-slate-800">
+                                    <div
+                                        v-for="task in (moduleDetail.tasks || [])"
+                                        :key="task.task_key"
+                                        class="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                                    >
+                                        <div>
+                                            <div class="flex items-center gap-2 flex-wrap">
+                                                <span class="font-medium text-sm text-slate-900 dark:text-white">
+                                                    {{ t(task.name, task.task_key) }}
+                                                </span>
+                                                <span class="text-xs font-mono px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                                                    {{ task.cron_expr }}
+                                                </span>
+                                            </div>
+                                            <p v-if="hasTranslation(task.description)" class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                                {{ t(task.description) }}
+                                            </p>
+                                        </div>
+                                        <button
+                                            v-if="canEdit"
+                                            @click="runTask(task.task_key)"
+                                            :disabled="runningTask === task.task_key"
+                                            class="ui-btn-secondary text-xs py-1.5 px-3 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-900/60 flex-shrink-0"
+                                        >
+                                            <span class="material-icons text-[15px]" :class="{ 'animate-spin': runningTask === task.task_key }">
+                                                {{ runningTask === task.task_key ? 'sync' : 'send' }}
+                                            </span>
+                                            <span>{{ runningTask === task.task_key ? t('common.running') : t('scraper.run_task') }}</span>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </template>
                     </div>
                 </div>
 
-                <div v-else class="flex-1 flex flex-col items-center justify-center text-gray-400 dark:text-gray-500 p-8 text-center">
-                    <span class="material-icons text-5xl mb-3 opacity-30">send</span>
-                    <p class="text-sm">{{ t('scraper.select_module') }}</p>
+                <div v-else class="flex-1 flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 p-8 text-center">
+                    <span class="material-icons text-4xl mb-2 opacity-40">send</span>
+                    <p class="text-xs">{{ t('scraper.select_module') }}</p>
                 </div>
             </div>
         </div>
 
-        <div class="bg-white dark:bg-gray-800 shadow-sm rounded-xl border border-gray-200 dark:border-gray-700 p-5">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-base font-bold text-gray-800 dark:text-white flex items-center gap-2">
-                    <span class="material-icons text-blue-500 text-lg">history</span>
-                    {{ t('push.logs') }}
-                </h3>
+        <div class="ui-surface">
+            <div class="ui-surface-header flex justify-between items-center">
+                <div class="flex items-center gap-2">
+                    <span class="material-icons text-slate-500 dark:text-slate-400 text-[18px]">history</span>
+                    <h3 class="text-sm font-semibold text-slate-900 dark:text-white tracking-tight">{{ t('push.logs') }}</h3>
+                </div>
                 <button
                     @click="fetchLogs"
-                    class="p-1.5 text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+                    class="ui-btn-secondary py-1 px-2.5 text-xs"
                     :title="t('common.refresh')"
                 >
-                    <span class="material-icons text-sm" :class="{'animate-spin': loadingLogs}">refresh</span>
+                    <span class="material-icons text-[15px]" :class="{ 'animate-spin': loadingLogs }">refresh</span>
+                    <span>{{ t('common.refresh') }}</span>
                 </button>
             </div>
 
-            <div class="overflow-x-auto border border-gray-200 dark:border-gray-700 rounded-lg">
-                <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
-                    <thead class="bg-gray-50 dark:bg-gray-700/60 text-xs uppercase text-gray-500 dark:text-gray-300">
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-800 text-sm">
+                    <thead class="bg-slate-50 dark:bg-slate-900/80 text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400">
                         <tr>
-                            <th class="px-4 py-2.5 text-left font-medium">{{ t('push.time') }}</th>
-                            <th class="px-4 py-2.5 text-left font-medium">{{ t('push.module') }}</th>
-                            <th class="px-4 py-2.5 text-left font-medium">{{ t('push.recipient') }}</th>
-                            <th class="px-4 py-2.5 text-left font-medium">{{ t('push.items') }}</th>
-                            <th class="px-4 py-2.5 text-left font-medium">{{ t('common.status') }}</th>
-                            <th class="px-4 py-2.5 text-right font-medium">{{ t('events.details') }}</th>
+                            <th class="px-4 py-2.5 text-left font-semibold">{{ t('push.time') }}</th>
+                            <th class="px-4 py-2.5 text-left font-semibold">{{ t('push.module') }}</th>
+                            <th class="px-4 py-2.5 text-left font-semibold">{{ t('push.recipient') }}</th>
+                            <th class="px-4 py-2.5 text-left font-semibold">{{ t('push.items') }}</th>
+                            <th class="px-4 py-2.5 text-left font-semibold">{{ t('common.status') }}</th>
+                            <th class="px-4 py-2.5 text-right font-semibold">{{ t('events.details') }}</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                    <tbody class="divide-y divide-slate-200 dark:divide-slate-800 bg-white dark:bg-slate-900">
                         <tr v-if="logs.length === 0">
-                            <td colspan="6" class="px-4 py-6 text-center text-gray-400 text-xs">
+                            <td colspan="6" class="px-4 py-6 text-center text-slate-400 text-xs">
                                 {{ t('push.logs_empty') }}
                             </td>
                         </tr>
-                        <tr v-for="log in logs" :key="log.id">
-                            <td class="px-4 py-2.5 font-mono text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{{ formatDate(log.created_at) }}</td>
-                            <td class="px-4 py-2.5 text-gray-800 dark:text-gray-200 font-mono text-xs">{{ log.push_module_id }}</td>
-                            <td class="px-4 py-2.5 text-gray-700 dark:text-gray-300 text-xs">{{ log.recipient }}</td>
-                            <td class="px-4 py-2.5 text-gray-600 dark:text-gray-400 text-xs">{{ log.item_count }}</td>
+                        <tr v-for="log in logs" :key="log.id" class="hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
+                            <td class="px-4 py-2.5 font-mono text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">{{ formatDate(log.created_at) }}</td>
+                            <td class="px-4 py-2.5 text-slate-800 dark:text-slate-200 font-mono text-xs">{{ log.push_module_id }}</td>
+                            <td class="px-4 py-2.5 text-slate-700 dark:text-slate-300 text-xs">{{ log.recipient }}</td>
+                            <td class="px-4 py-2.5 text-slate-600 dark:text-slate-400 text-xs font-mono">{{ log.item_count }}</td>
                             <td class="px-4 py-2.5">
                                 <span
-                                    class="px-2 py-0.5 text-[11px] font-semibold rounded-full border"
+                                    class="px-2 py-0.5 text-[11px] font-medium rounded border"
                                     :class="log.status === 'success'
-                                        ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-800'
-                                        : 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800'"
+                                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900'
+                                        : 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-900'"
                                 >
                                     {{ t('push.status.' + log.status, log.status) }}
                                 </span>
@@ -377,11 +389,11 @@
                                 <button
                                     v-if="log.details"
                                     @click="openLogDetail(log)"
-                                    class="text-blue-600 dark:text-blue-400 hover:underline text-xs"
+                                    class="text-blue-600 dark:text-blue-400 hover:underline text-xs font-medium"
                                 >
                                     {{ t('events.details') }}
                                 </button>
-                                <span v-else class="text-xs text-gray-400">-</span>
+                                <span v-else class="text-xs text-slate-400">-</span>
                             </td>
                         </tr>
                     </tbody>
@@ -426,7 +438,8 @@ const OVERRIDABLE_SMTP_KEYS = new Set([
 
 export default {
     components: { CustomSelect, ConfirmModal, InfoModal },
-    props: ['t', 'currentUser'],
+    props: ['t', 'currentUser', 'subtab'],
+    emits: ['update:subtab'],
     inject: ['showToast'],
     data() {
         return {
@@ -448,6 +461,24 @@ export default {
             detailModal: { show: false, title: '', message: '' },
             logs: []
         };
+    },
+    watch: {
+        async subtab(next) {
+            const targetId = String(next || '').trim();
+            if (!targetId) {
+                this.selectedModule = null;
+                this.moduleDetail = null;
+                return;
+            }
+            if (this.selectedModule && this.selectedModule.module_id === targetId) {
+                return;
+            }
+            const found = (this.modules || []).find(m => m.module_id === targetId);
+            if (found) {
+                this.selectedModule = found;
+                await this.fetchModuleDetail(found.module_id);
+            }
+        }
     },
     computed: {
         canEdit() {
@@ -480,9 +511,18 @@ export default {
             try {
                 const res = await http.get('/api/dashboard/push/modules');
                 this.modules = res.data || [];
+                const targetSubtab = String(this.subtab || '').trim();
                 if (this.selectedModule) {
                     const updated = this.modules.find(m => m.module_id === this.selectedModule.module_id);
                     if (updated) this.selectedModule = updated;
+                } else if (targetSubtab) {
+                    const matched = this.modules.find(m => m.module_id === targetSubtab);
+                    if (matched) {
+                        this.selectedModule = matched;
+                        await this.fetchModuleDetail(matched.module_id);
+                    } else {
+                        this.$emit('update:subtab', { subtab: '', replace: true });
+                    }
                 }
             } catch (err) {
                 this.showToast(formatAPIError(err, this.t), 'error');
@@ -507,7 +547,13 @@ export default {
         },
         async selectModule(mod) {
             this.selectedModule = mod;
+            this.$emit('update:subtab', mod.module_id);
             await this.fetchModuleDetail(mod.module_id);
+        },
+        clearSelectedModule() {
+            this.selectedModule = null;
+            this.moduleDetail = null;
+            this.$emit('update:subtab', '');
         },
         async fetchModuleDetail(id) {
             this.loadingDetail = true;

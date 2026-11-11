@@ -1,221 +1,110 @@
 <template>
-  <div class="paper-container">
-    <header class="paper-header">
-      <div class="top-actions">
-        <select
-          v-if="languages.length > 0"
-          :value="currentLocale"
-          class="locale-select"
-          aria-label="Language"
-          @change="changeLocale($event.target.value)"
-        >
-          <option v-for="lang in languages" :key="lang.code" :value="lang.code">
-            {{ lang.name }}
-          </option>
-        </select>
-
-        <a href="/dashboard" class="dashboard-btn">
-          <svg class="icon-svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-            <path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z" />
-          </svg>
-          <span>{{ t('newspaper.dashboard_link', 'Dashboard') }}</span>
+  <div v-if="forbidden" class="forbidden-shell">
+    <div class="forbidden-card">
+      <div class="forbidden-code">403</div>
+      <h1 class="forbidden-title">{{ t('newspaper.forbidden_title', 'Newspaper Access Denied') }}</h1>
+      <p class="forbidden-desc">{{ forbiddenMessage || t('newspaper.forbidden_desc', 'Access restricted') }}</p>
+      <div class="forbidden-actions">
+        <a href="/dashboard" class="forbidden-btn primary">
+          {{ t('newspaper.go_dashboard', 'Open Dashboard') }}
         </a>
+        <button type="button" class="forbidden-btn" @click="signOutAndRedirect">
+          {{ t('newspaper.sign_out', 'Sign Out') }}
+        </button>
       </div>
-
-      <h1 class="masthead-title">{{ mastheadTitle }}</h1>
-
-      <div class="date-bar">
-        <span>{{ formattedCurrentDate }}</span>
-        <span v-if="mastheadSubtitle">&middot; {{ mastheadSubtitle }}</span>
-        <span v-if="lastUpdatedText">&middot; {{ t('newspaper.updated_at', 'Updated') }} {{ lastUpdatedText }}</span>
-      </div>
-    </header>
-
-    <nav v-if="sources.length > 1" class="source-filter-bar" aria-label="Sources">
-      <button
-        type="button"
-        class="filter-pill"
-        :class="{ active: selectedSource === '' }"
-        @click="selectSource('')"
-      >
-        {{ t('newspaper.filter_all', 'All Sources') }}
-      </button>
-      <button
-        v-for="src in sources"
-        :key="src"
-        type="button"
-        class="filter-pill"
-        :class="{ active: selectedSource === src }"
-        @click="selectSource(src)"
-      >
-        {{ src }}
-      </button>
-    </nav>
-
-    <div v-if="loading" class="state-box">
-      {{ t('newspaper.loading', 'Loading articles...') }}
     </div>
+  </div>
 
-    <div v-else-if="error" class="state-box error">
-      {{ error }}
-    </div>
-
-    <div v-else-if="newsList.length === 0" class="state-box">
-      {{ t('newspaper.empty', 'No recent articles found') }}
-    </div>
-
-    <main v-else>
-      <section v-for="(items, source) in groupedNews" :key="source" class="source-section">
-        <h2 class="channel-title">
-          <span>{{ t('newspaper.source_prefix', 'Source') }}: {{ source }}</span>
-          <span class="channel-count">{{ items.length }}</span>
-        </h2>
-
-        <article v-for="item in items" :key="item.id" class="article-entry">
-          <h3 class="news-title">{{ item.title }}</h3>
-
-          <div v-if="item.tags && item.tags.length > 0" class="tags-container">
-            <span v-for="(tag, idx) in item.tags" :key="idx" class="tag-badge">
-              #{{ tag.tag }}
-            </span>
-          </div>
-
-          <p class="article-meta">
-            <span>{{ formatDateTime(item.datetime_released) }}</span>
-            <span v-if="item.author && item.author !== source"> &middot; {{ item.author }}</span>
-          </p>
-
-          <blockquote v-if="item.quotation && item.quotation.content" class="article-quote">
-            <p>
-              <strong>{{ t('newspaper.quote', 'Quote') }} {{ item.quotation.from || source }}:</strong>
-              {{ item.quotation.content }}
-            </p>
-          </blockquote>
-
-          <div
-            v-if="isHtmlArticle(item)"
-            class="article-body"
-            v-html="sanitizeRichHtml(item.content)"
-          ></div>
-          <div
-            v-else
-            class="article-body"
-            v-html="renderMarkdown(item.content || item.summary || '')"
-          ></div>
-
-          <div v-if="!isHtmlArticle(item) && imageAttachments(item).length > 0" class="article-attachments">
-            <img
-              v-for="(att, idx) in imageAttachments(item)"
-              :key="idx"
-              :src="att.url"
-              loading="lazy"
-              :alt="item.title"
-            />
-          </div>
-
-          <p v-if="safeUrl(item.from_url)" class="original-link-wrap">
-            <a
-              :href="safeUrl(item.from_url)"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="original-link"
-            >
-              <svg class="icon-svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                <path d="M19 19H5V5h7V3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z" />
-              </svg>
-              <span>{{ t('newspaper.original_link', 'Source Link') }}</span>
-            </a>
-          </p>
-
-          <hr class="article-divider" />
-        </article>
-      </section>
-    </main>
-
-    <footer class="paper-footer">
-      {{ t('newspaper.generated_by', 'Published by') }} {{ footerPublisher }} &middot; {{ formattedCurrentDate }}
-    </footer>
+  <div v-else class="newspaper-shell" :class="'theme-' + activeTheme">
+    <component
+      :is="activeThemeComponent"
+      :masthead-title="mastheadTitle"
+      :masthead-subtitle="mastheadSubtitle"
+      :footer-publisher="footerPublisher"
+      :formatted-current-date="formattedCurrentDate"
+      :last-updated-text="lastUpdatedText"
+      :news-list="newsList"
+      :grouped-news="groupedNews"
+      :sources="sources"
+      :selected-source="selectedSource"
+      :config="newsConfig"
+      :languages="languages"
+      :current-locale="currentLocale"
+      :active-theme="activeTheme"
+      :loading="loading"
+      :error="error"
+      :browser-locale-tag="browserLocaleTag"
+      :t="t"
+      @select-source="selectSource"
+      @change-locale="changeLocale"
+      @switch-theme="switchTheme"
+      @retry="fetchNews"
+    />
   </div>
 </template>
 
 <script>
-import { Marked } from 'marked'
+import ThemeClassic from './themes/ThemeClassic.vue'
+import ThemeModern from './themes/ThemeModern.vue'
+import ThemeFeed from './themes/ThemeFeed.vue'
 
-function escapeHtml(raw) {
-  return String(raw || '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
+const ACCESS_KEY = 'utd_access_token'
+const REFRESH_KEY = 'utd_refresh_token'
+const USER_KEY = 'utd_user'
+const THEME_STORAGE_KEY = 'utd_newspaper_theme'
+const VALID_THEMES = new Set(['classic', 'modern', 'feed'])
+
+function getStoredToken(key) {
+  return localStorage.getItem(key) || sessionStorage.getItem(key) || ''
 }
 
-function sanitizeHttpUrl(raw) {
-  const value = String(raw || '').trim()
-  if (!value) return ''
-  if (value.startsWith('https://') || value.startsWith('http://')) {
-    return value
-  }
-  return ''
+function saveRefreshedTokens(data) {
+  const store = localStorage.getItem(REFRESH_KEY) ? localStorage : sessionStorage
+  if (data.token) store.setItem(ACCESS_KEY, data.token)
+  if (data.refresh_token) store.setItem(REFRESH_KEY, data.refresh_token)
+  if (data.user) store.setItem(USER_KEY, JSON.stringify(data.user))
 }
 
-function createMarkdownParser() {
-  const parser = new Marked({
-    breaks: true,
-    gfm: true
+function clearStoredAuth() {
+  ;[localStorage, sessionStorage].forEach((store) => {
+    store.removeItem(ACCESS_KEY)
+    store.removeItem(REFRESH_KEY)
+    store.removeItem(USER_KEY)
   })
-
-  parser.use({
-    renderer: {
-      html({ text }) {
-        return escapeHtml(text)
-      },
-      link({ href, title, text, tokens }) {
-        const cleanHref = sanitizeHttpUrl(href)
-        const label = Array.isArray(tokens) && tokens.length > 0
-          ? this.parser.parseInline(tokens)
-          : escapeHtml(text || href || '')
-        if (!cleanHref) {
-          return label
-        }
-        const titleAttr = title ? ` title="${escapeHtml(title)}"` : ''
-        return `<a href="${escapeHtml(cleanHref)}" target="_blank" rel="noopener noreferrer"${titleAttr}>${label}</a>`
-      },
-      image({ href, title, text }) {
-        const cleanSrc = sanitizeHttpUrl(href)
-        if (!cleanSrc) {
-          return escapeHtml(text || '')
-        }
-        const altAttr = escapeHtml(text || '')
-        const titleAttr = title ? ` title="${escapeHtml(title)}"` : ''
-        return `<img src="${escapeHtml(cleanSrc)}" alt="${altAttr}"${titleAttr} loading="lazy" />`
-      }
-    }
-  })
-
-  return parser
 }
-
-const markdownParser = createMarkdownParser()
 
 export default {
   name: 'NewspaperApp',
+  components: { ThemeClassic, ThemeModern, ThemeFeed },
   data() {
     return {
       loading: true,
       error: '',
+      forbidden: false,
+      forbiddenMessage: '',
       siteInfo: {
         site_name: 'Utopia Daily',
         description: '',
-        version: '2.0.0',
+        version: __APP_VERSION__,
         default_locale: 'en_US',
         newspaper_title: 'Utopia Daily',
-        newspaper_subtitle: 'Daily News Digest'
+        newspaper_subtitle: 'Daily News Digest',
+        newspaper_visibility: 'public'
       },
       newsConfig: {
         title: '',
-        subtitle: ''
+        subtitle: '',
+        lookback_days: 3,
+        max_items: 100,
+        theme: 'classic',
+        sort: 'newest',
+        show_tags: true,
+        show_summary: false,
+        show_author: true,
+        show_source_filter: true,
+        allow_theme_switch: true
       },
+      themeOverride: '',
       languages: [],
       currentLocale: 'en_US',
       messages: {},
@@ -226,6 +115,20 @@ export default {
     }
   },
   computed: {
+    activeTheme() {
+      if (this.newsConfig.allow_theme_switch && VALID_THEMES.has(this.themeOverride)) {
+        return this.themeOverride
+      }
+      if (VALID_THEMES.has(this.newsConfig.theme)) {
+        return this.newsConfig.theme
+      }
+      return 'classic'
+    },
+    activeThemeComponent() {
+      if (this.activeTheme === 'modern') return 'ThemeModern'
+      if (this.activeTheme === 'feed') return 'ThemeFeed'
+      return 'ThemeClassic'
+    },
     mastheadTitle() {
       return (
         this.newsConfig.title ||
@@ -291,6 +194,10 @@ export default {
     }
   },
   async created() {
+    const savedTheme = (localStorage.getItem(THEME_STORAGE_KEY) || '').toLowerCase()
+    if (VALID_THEMES.has(savedTheme)) {
+      this.themeOverride = savedTheme
+    }
     await Promise.all([this.fetchSiteInfo(), this.fetchLocales()])
     this.resolveInitialLocale()
     await Promise.all([this.loadMessages(this.currentLocale), this.fetchNews()])
@@ -361,34 +268,95 @@ export default {
       localStorage.setItem('locale', locale)
       await this.loadMessages(locale)
     },
+    switchTheme(mode) {
+      if (!VALID_THEMES.has(mode)) return
+      this.themeOverride = mode
+      localStorage.setItem(THEME_STORAGE_KEY, mode)
+    },
     async selectSource(source) {
       if (this.selectedSource === source && !this.error) return
       this.selectedSource = source
       await this.fetchNews()
     },
+    async tryRefreshAccessToken() {
+      const refreshToken = getStoredToken(REFRESH_KEY)
+      if (!refreshToken) return false
+      try {
+        const res = await fetch('/api/auth/refresh', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refresh_token: refreshToken })
+        })
+        if (!res.ok) return false
+        const data = await res.json()
+        if (!data || !data.token) return false
+        saveRefreshedTokens(data)
+        return true
+      } catch {
+        return false
+      }
+    },
+    async requestLatestOnce(query) {
+      const headers = {}
+      const token = getStoredToken(ACCESS_KEY)
+      if (token) {
+        headers.Authorization = `Bearer ${token}`
+      }
+      return fetch(`/api/newspaper/latest${query}`, { headers })
+    },
     async fetchNews() {
       this.loading = true
       this.error = ''
+      this.forbidden = false
+      this.forbiddenMessage = ''
+
       try {
         const query = this.selectedSource
           ? `?source=${encodeURIComponent(this.selectedSource)}`
           : ''
-        const res = await fetch(`/api/newspaper/latest${query}`)
-        if (!res.ok) {
-          let errCode = `HTTP ${res.status}`
+
+        let res = await this.requestLatestOnce(query)
+        if (res.status === 401) {
+          const refreshed = await this.tryRefreshAccessToken()
+          if (refreshed) {
+            res = await this.requestLatestOnce(query)
+          }
+          if (res.status === 401) {
+            clearStoredAuth()
+            window.location.replace('/dashboard?redirect=/')
+            return
+          }
+        }
+
+        if (res.status === 403) {
+          this.forbidden = true
           try {
             const payload = await res.json()
             if (payload && payload.code) {
-              errCode = this.t(`error.${payload.code}`, payload.code)
+              this.forbiddenMessage = this.t(`error.${payload.code}`, this.t('newspaper.forbidden_desc', 'Access denied'))
+            }
+          } catch {
+            // keep default forbidden description
+          }
+          return
+        }
+
+        if (!res.ok) {
+          let errText = `HTTP ${res.status}`
+          try {
+            const payload = await res.json()
+            if (payload && payload.code) {
+              errText = this.t(`error.${payload.code}`, payload.code)
             }
           } catch {
             // keep status text
           }
-          throw new Error(errCode)
+          throw new Error(errText)
         }
+
         const data = await res.json()
         if (data.config) {
-          this.newsConfig = data.config
+          this.newsConfig = { ...this.newsConfig, ...data.config }
         }
         if (Array.isArray(data.sources)) {
           this.sources = data.sources
@@ -396,54 +364,29 @@ export default {
         this.newsList = Array.isArray(data.news) ? data.news : []
         this.lastFetchedAt = new Date()
       } catch (err) {
-        this.error = err?.message || 'Failed to load articles'
+        this.error = err?.message || this.t('newspaper.load_error', 'Failed to load articles')
       } finally {
         this.loading = false
       }
     },
-    isHtmlArticle(item) {
-      return item?.render_type === 'html' || item?.content_type === 'html'
-    },
-    safeUrl(url) {
-      return sanitizeHttpUrl(url)
-    },
-    imageAttachments(item) {
-      if (!Array.isArray(item?.attachments)) return []
-      const rawContent = String(item?.content || '')
-      return item.attachments
-        .filter((att) => att && (att.type === 'image' || !att.type))
-        .map((att) => ({ ...att, url: sanitizeHttpUrl(att.url) }))
-        .filter((att) => Boolean(att.url) && !rawContent.includes(att.url))
-    },
-    renderMarkdown(text) {
-      if (!text) return ''
-      return markdownParser.parse(String(text))
-    },
-    sanitizeRichHtml(raw) {
-      if (!raw) return ''
-      return String(raw)
-        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-        .replace(/\son[a-z]+\s*=\s*(['"]).*?\1/gi, '')
-        .replace(/javascript:/gi, '')
-    },
-    formatDateTime(iso) {
-      if (!iso) return ''
-      const dt = new Date(iso)
-      if (Number.isNaN(dt.getTime())) return ''
-      try {
-        return dt
-          .toLocaleString(this.browserLocaleTag, {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: false
+    async signOutAndRedirect() {
+      const refreshToken = getStoredToken(REFRESH_KEY)
+      const accessToken = getStoredToken(ACCESS_KEY)
+      if (refreshToken) {
+        try {
+          const headers = { 'Content-Type': 'application/json' }
+          if (accessToken) headers.Authorization = `Bearer ${accessToken}`
+          await fetch('/api/auth/logout', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ refresh_token: refreshToken })
           })
-          .replace(/\//g, '-')
-      } catch {
-        return iso
+        } catch {
+          // ignore logout error
+        }
       }
+      clearStoredAuth()
+      window.location.replace('/dashboard?redirect=/')
     }
   }
 }

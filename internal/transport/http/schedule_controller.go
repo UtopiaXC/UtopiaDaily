@@ -47,6 +47,21 @@ func (ctl *ScheduleController) Update(c *gin.Context) {
 	common.RespondSuccess(c, gin.H{"status": "ok"})
 }
 
+func (ctl *ScheduleController) BatchUpdate(c *gin.Context) {
+	var req struct {
+		Jobs []service.ScheduleBatchUpdateItem `json:"jobs"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		common.RespondError(c, http.StatusBadRequest, common.ErrValidationFailed)
+		return
+	}
+	if err := ctl.schedSvc.BatchUpdateJobs(req.Jobs); err != nil {
+		common.RespondFromError(c, err)
+		return
+	}
+	common.RespondSuccess(c, gin.H{"status": "ok"})
+}
+
 func (ctl *ScheduleController) RunNow(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {

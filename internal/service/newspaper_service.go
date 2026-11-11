@@ -2,10 +2,12 @@ package service
 
 import (
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 
 	"github.com/UtopiaXC/UtopiaDaily/internal/common"
+	"github.com/UtopiaXC/UtopiaDaily/internal/model"
 	"github.com/UtopiaXC/UtopiaDaily/internal/repository"
 )
 
@@ -24,6 +26,7 @@ type NewspaperTagDTO struct {
 	Tag        string  `json:"tag"`
 	GroupName  string  `json:"group_name,omitempty"`
 	Confidence float64 `json:"confidence"`
+	Provider   string  `json:"provider,omitempty"`
 }
 
 type NewspaperArticleDTO struct {
@@ -51,21 +54,95 @@ type NewspaperResponse struct {
 
 type NewspaperService struct {
 	scraperRepo *repository.ScraperRepository
+	newsRepo    *repository.NewspaperRepository
+	modRepo     *repository.ModuleRepository
 	cfgService  *ConfigService
 }
 
-func NewNewspaperService(scraperRepo *repository.ScraperRepository, cfgService *ConfigService) *NewspaperService {
+func NewNewspaperService(
+	scraperRepo *repository.ScraperRepository,
+	newsRepo *repository.NewspaperRepository,
+	modRepo *repository.ModuleRepository,
+	cfgService *ConfigService,
+) *NewspaperService {
 	return &NewspaperService{
 		scraperRepo: scraperRepo,
+		newsRepo:    newsRepo,
+		modRepo:     modRepo,
 		cfgService:  cfgService,
 	}
 }
 
 func (s *NewspaperService) GetLatest(sourceFilter string) (*NewspaperResponse, error) {
 	cfg := s.cfgService.GetNewspaperConfig()
-	rows, err := s.scraperRepo.QueryRecent(cfg.LookbackDays, cfg.MaxItems, nil)
-	if err != nil {
-		return nil, common.NewAPIError(http.StatusInternalServerError, common.ErrDatabaseError)
+
+	var rows []model.ScraperResult
+	if s.newsRepo != nil && s.modRepo != nil {
+		scrapers, _ := s.modRepo.ListByKind(model.ModuleKindScraper)
+		cfgMap, _ := s.newsRepo.GetModuleConfigMap()
+
+		seenIDs := make(map[uint]bool)
+		hasExplicitScraper := len(scrapers) > 0
+
+		if hasExplicitScraper {
+			for _, m := range scrapers {
+				mc, hasRow := cfgMap[m.ID]
+				if hasRow && !mc.Visible {
+					continue
+				}
+				lookback := cfg.LookbackDays
+				if hasRow && mc.LookbackDaysOverride > 0 {
+					lookback = mc.LookbackDaysOverride
+				}
+				modLimit := cfg.MaxItems
+				if hasRow && mc.MaxItemsOverride > 0 {
+					modLimit = mc.MaxItemsOverride
+				}
+				modRows, err := s.scraperRepo.QueryByModule(m.ID, lookback, modLimit)
+				if err != nil {
+					return nil, common.NewAPIError(http.StatusInternalServerError, common.ErrDatabaseError)
+				}
+				for _, r := range modRows {
+					if !seenIDs[r.ID] {
+						seenIDs[r.ID] = true
+						rows = append(rows, r)
+					}
+				}
+			}
+		} else {
+			var err error
+			rows, err = s.scraperRepo.QueryRecent(cfg.LookbackDays, cfg.MaxItems, nil)
+			if err != nil {
+				return nil, common.NewAPIError(http.StatusInternalServerError, common.ErrDatabaseError)
+			}
+		}
+	} else {
+		var err error
+		rows, err = s.scraperRepo.QueryRecent(cfg.LookbackDays, cfg.MaxItems, nil)
+		if err != nil {
+			return nil, common.NewAPIError(http.StatusInternalServerError, common.ErrDatabaseError)
+		}
+	}
+
+	if cfg.Sort == "source" {
+		sort.SliceStable(rows, func(i, j int) bool {
+			si := strings.ToLower(rows[i].Source)
+			sj := strings.ToLower(rows[j].Source)
+			if si != sj {
+				return si < sj
+			}
+			if !rows[i].DatetimeReleased.Equal(rows[j].DatetimeReleased) {
+				return rows[i].DatetimeReleased.After(rows[j].DatetimeReleased)
+			}
+			return rows[i].ID > rows[j].ID
+		})
+	} else {
+		sort.SliceStable(rows, func(i, j int) bool {
+			if !rows[i].DatetimeReleased.Equal(rows[j].DatetimeReleased) {
+				return rows[i].DatetimeReleased.After(rows[j].DatetimeReleased)
+			}
+			return rows[i].ID > rows[j].ID
+		})
 	}
 
 	sourceSet := make(map[string]bool)
@@ -78,6 +155,9 @@ func (s *NewspaperService) GetLatest(sourceFilter string) (*NewspaperResponse, e
 			sources = append(sources, r.Source)
 		}
 		if sourceFilter != "" && !strings.EqualFold(r.Source, sourceFilter) && !strings.EqualFold(r.ModuleID, sourceFilter) {
+			continue
+		}
+		if len(articles) >= cfg.MaxItems {
 			continue
 		}
 
@@ -115,10 +195,15 @@ func (s *NewspaperService) GetLatest(sourceFilter string) (*NewspaperResponse, e
 			tags := make([]NewspaperTagDTO, 0, len(r.ResultTags))
 			for _, rt := range r.ResultTags {
 				if rt.Tag != nil {
+					gName := ""
+					if rt.Tag.Group != nil {
+						gName = rt.Tag.Group.Name
+					}
 					tags = append(tags, NewspaperTagDTO{
 						Tag:        rt.Tag.Name,
-						GroupName:  rt.Tag.GroupName,
+						GroupName:  gName,
 						Confidence: rt.Confidence,
+						Provider:   rt.Provider,
 					})
 				}
 			}
@@ -127,9 +212,26 @@ func (s *NewspaperService) GetLatest(sourceFilter string) (*NewspaperResponse, e
 		articles = append(articles, dto)
 	}
 
+	sort.Strings(sources)
+
 	return &NewspaperResponse{
 		Config:  cfg,
 		Sources: sources,
 		News:    articles,
 	}, nil
+}
+
+func (s *NewspaperService) ListModuleConfigs() ([]repository.NewspaperModuleConfigDTO, error) {
+	items, err := s.newsRepo.ListModuleConfigs()
+	if err != nil {
+		return nil, common.NewAPIError(http.StatusInternalServerError, common.ErrDatabaseError)
+	}
+	return items, nil
+}
+
+func (s *NewspaperService) SaveModuleConfigs(items []repository.NewspaperModuleConfigInput) error {
+	if err := s.newsRepo.SaveModuleConfigs(items); err != nil {
+		return common.NewAPIError(http.StatusInternalServerError, common.ErrDatabaseError)
+	}
+	return nil
 }

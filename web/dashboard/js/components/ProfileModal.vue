@@ -1,62 +1,62 @@
 <template>
     <transition name="modal">
-        <div v-if="show" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm p-4">
-            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md border border-gray-200 dark:border-gray-700 overflow-hidden">
-                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50">
-                    <h3 class="text-lg font-bold text-gray-900 dark:text-white">{{ t('auth.profile.title') }}</h3>
-                    <button @click="$emit('close')" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
-                        <span class="material-icons text-xl">close</span>
+        <div v-if="show" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4">
+            <div class="bg-white dark:bg-slate-900 rounded-lg w-full max-w-md border border-slate-200 dark:border-slate-800 overflow-hidden">
+                <div class="px-5 py-3.5 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-900/60">
+                    <h3 class="text-base font-semibold text-slate-900 dark:text-white">{{ t('auth.profile.title') }}</h3>
+                    <button @click="$emit('close')" class="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200">
+                        <span class="material-icons text-[20px]">close</span>
                     </button>
                 </div>
 
-                <div class="p-6 space-y-6 max-h-[80vh] overflow-y-auto" v-if="user">
-                    <form @submit.prevent="saveProfile" class="space-y-4">
+                <div class="p-5 space-y-5 max-h-[80vh] overflow-y-auto" v-if="user">
+                    <form @submit.prevent="saveProfile" class="space-y-3.5">
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('auth.profile.username') }}</label>
-                                <input :value="user.username" disabled class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-gray-100 dark:bg-gray-900 text-gray-500 cursor-not-allowed">
+                                <label class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">{{ t('auth.profile.username') }}</label>
+                                <input :value="user.username" disabled class="ui-input">
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('auth.profile.role') }}</label>
-                                <input :value="user.role_name" disabled class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-gray-100 dark:bg-gray-900 text-gray-500 cursor-not-allowed">
+                                <label class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">{{ t('auth.profile.role') }}</label>
+                                <input :value="user.role_name" disabled class="ui-input">
                             </div>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('auth.profile.nickname') }}</label>
-                            <input v-model="profileForm.nickname" type="text" class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            <label class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">{{ t('auth.profile.nickname') }}</label>
+                            <input v-model="profileForm.nickname" type="text" class="ui-input">
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('auth.profile.email') }}</label>
-                            <input v-model="profileForm.email" type="email" class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            <label class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">{{ t('auth.profile.email') }}</label>
+                            <input v-model="profileForm.email" type="email" class="ui-input">
                         </div>
                         <div class="flex justify-end">
-                            <button type="submit" :disabled="savingProfile" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition disabled:opacity-50 flex items-center gap-1">
-                                <span v-if="savingProfile" class="material-icons text-sm animate-spin">sync</span>
+                            <button type="submit" :disabled="savingProfile" class="ui-btn-primary">
+                                <span v-if="savingProfile" class="material-icons text-[16px] animate-spin">sync</span>
                                 {{ t('auth.profile.save') }}
                             </button>
                         </div>
                     </form>
 
-                    <div class="border-t border-gray-200 dark:border-gray-700 pt-5">
-                        <h4 class="text-sm font-bold text-gray-800 dark:text-white mb-3">{{ t('auth.profile.password_section') }}</h4>
+                    <div class="border-t border-slate-200 dark:border-slate-800 pt-4">
+                        <h4 class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3">{{ t('auth.profile.password_section') }}</h4>
                         <form @submit.prevent="changePassword" class="space-y-3">
                             <div>
-                                <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">{{ t('auth.profile.old_password') }}</label>
-                                <input v-model="pwdForm.old_password" type="password" class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 dark:text-white">
+                                <label class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">{{ t('auth.profile.old_password') }}</label>
+                                <input v-model="pwdForm.old_password" type="password" class="ui-input">
                             </div>
                             <div>
-                                <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">{{ t('auth.profile.new_password') }}</label>
-                                <input v-model="pwdForm.new_password" type="password" class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 dark:text-white">
+                                <label class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">{{ t('auth.profile.new_password') }}</label>
+                                <input v-model="pwdForm.new_password" type="password" class="ui-input">
                             </div>
                             <div>
-                                <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">{{ t('auth.profile.confirm_password') }}</label>
-                                <input v-model="pwdForm.confirm_password" type="password" class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 dark:text-white">
+                                <label class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">{{ t('auth.profile.confirm_password') }}</label>
+                                <input v-model="pwdForm.confirm_password" type="password" class="ui-input">
                             </div>
-                            <div class="flex justify-between items-center pt-2">
-                                <button type="button" @click="logoutAll" :disabled="revoking" class="px-3 py-2 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition">
+                            <div class="flex justify-between items-center pt-1">
+                                <button type="button" @click="logoutAll" :disabled="revoking" class="px-3 py-1.5 text-xs font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-md transition">
                                     {{ t('auth.profile.logout_all') }}
                                 </button>
-                                <button type="submit" :disabled="savingPwd" class="px-4 py-2 bg-gray-800 dark:bg-gray-600 hover:bg-gray-900 dark:hover:bg-gray-500 text-white text-sm font-medium rounded-lg transition disabled:opacity-50">
+                                <button type="submit" :disabled="savingPwd" class="ui-btn-primary">
                                     {{ t('auth.profile.change_password') }}
                                 </button>
                             </div>
@@ -153,5 +153,5 @@ export default {
             }
         }
     }
-}
+};
 </script>

@@ -52,6 +52,7 @@ func (r *Registry) ReloadAll() error {
 
 	r.RegisterScraper(scrapers.NewTelegramChannelScraper())
 	r.RegisterScraper(scrapers.NewBilibiliScraper())
+	r.RegisterScraper(scrapers.NewBangumiScraper())
 	r.RegisterPusher(pushers.NewSMTPPushModule())
 
 	r.scanDir(filepath.Join(r.pluginsDir, "scrapers"), module.KindScraper)

@@ -9,7 +9,7 @@ func NewNoopClassifier() *NoopClassifier {
 }
 
 func (n *NoopClassifier) Provider() string {
-	return "slot"
+	return "none"
 }
 
 func (n *NoopClassifier) ClassifyBatch(ctx context.Context, items []InputItem) ([]Result, error) {
@@ -21,4 +21,8 @@ func (n *NoopClassifier) ClassifyBatch(ctx context.Context, items []InputItem) (
 		})
 	}
 	return results, nil
+}
+
+func (n *NoopClassifier) ClassifyItem(ctx context.Context, item InputItem, opts EngineOptions) ([]TagAssignment, error) {
+	return nil, nil
 }
